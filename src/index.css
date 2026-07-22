@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+@theme {
+  /* Ground is a cool slate rather than pure black, so the amber reads warm against it. */
+  --color-ground: #101319;
+  --color-pane: #161a22;
+  --color-card: #1d222c;
+  --color-card-hi: #232936;
+  --color-line: #272d3a;
+  --color-ink: #e6e9ef;
+  --color-muted: #7f8899;
+  --color-faint: #5a6373;
+
+  /* Amber phosphor: the other historical terminal color. One accent, used sparingly. */
+  --color-accent: #f0a868;
+
+  --font-mono: ui-monospace, "Cascadia Code", "JetBrains Mono", Consolas, Menlo,
+    monospace;
+  --font-sans: ui-sans-serif, system-ui, "Segoe UI Variable Text", "Segoe UI",
+    sans-serif;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    background-color: var(--color-ground);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Chrome is monospace, content is sans. The frame is a terminal, the tasks are human. */
+  ::selection {
+    background-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  }
+
+  :focus-visible {
+    outline: 1px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  input,
+  textarea {
+    font: inherit;
+    color: inherit;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Thin, unobtrusive scrollbars that match the pane chrome. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line) transparent;
+}
