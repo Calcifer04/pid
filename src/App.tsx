@@ -102,65 +102,17 @@ export default function App() {
       setBoard(await importFile(file));
       setError(null);
     } catch {
-      setError("That file is not a routine board. Nothing was changed.");
+      setError("that file is not a routine board. nothing was changed.");
     }
     if (fileRef.current) fileRef.current.value = "";
   }
 
+  const action =
+    "px-2 py-1 text-[11px] text-muted transition-colors hover:bg-card hover:text-accent";
+
   return (
     <div className="flex h-full flex-col bg-ground">
-      <header className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 px-6 py-4">
-        <h1 className="flex items-baseline gap-1.5 font-mono text-sm tracking-[0.14em] text-ink lowercase">
-          routine
-          <span aria-hidden className="inline-block h-3.5 w-1.5 bg-accent" />
-        </h1>
-
-        <span className="font-mono text-[11px] text-faint tabular-nums">
-          {board.tasks.length} {board.tasks.length === 1 ? "task" : "tasks"}
-        </span>
-
-        <div className="ml-auto flex items-center gap-1">
-          <button
-            type="button"
-            onClick={addPhase}
-            className="rounded px-2 py-1 font-mono text-[11px] text-muted transition-colors hover:bg-pane hover:text-ink"
-          >
-            + phase
-          </button>
-          <button
-            type="button"
-            onClick={() => exportFile(board)}
-            className="rounded px-2 py-1 font-mono text-[11px] text-muted transition-colors hover:bg-pane hover:text-ink"
-          >
-            export
-          </button>
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            className="rounded px-2 py-1 font-mono text-[11px] text-muted transition-colors hover:bg-pane hover:text-ink"
-          >
-            import
-          </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="application/json,.json"
-            hidden
-            onChange={(e) => void onPickFile(e.target.files?.[0])}
-          />
-        </div>
-      </header>
-
-      {error && (
-        <p
-          role="alert"
-          className="mx-6 mb-3 rounded border border-accent/40 bg-pane px-3 py-2 font-mono text-[11px] text-accent"
-        >
-          {error}
-        </p>
-      )}
-
-      <main className="flex flex-1 gap-4 overflow-x-auto px-6 pt-3 pb-6">
+      <main className="flex flex-1 gap-3 overflow-x-auto px-4 pt-6 pb-4">
         {board.phases.map((phase) => (
           <Column
             key={phase.id}
@@ -180,11 +132,68 @@ export default function App() {
         <button
           type="button"
           onClick={addPhase}
-          className="h-fit shrink-0 rounded-md border border-dashed border-line px-4 py-3 font-mono text-[11px] text-faint transition-colors hover:border-faint hover:text-ink"
+          className="h-fit shrink-0 border border-dashed border-line px-3 py-2 text-[11px] text-faint transition-colors hover:border-faint hover:text-accent"
         >
           + phase
         </button>
       </main>
+
+      {error && (
+        <p
+          role="alert"
+          className="mx-4 mb-2 border border-accent/40 bg-pane px-3 py-1.5 text-[11px] text-accent"
+        >
+          {error}
+        </p>
+      )}
+
+      {/* Status line, tmux-style: session block, then per-phase counts, then actions. */}
+      <footer className="flex shrink-0 items-center border-t border-line bg-pane text-[11px]">
+        <span className="bg-accent px-2.5 py-1.5 font-semibold text-ground">
+          routine
+        </span>
+
+        <div className="flex items-center gap-3 overflow-x-auto px-3 text-muted">
+          {board.phases.map((p) => (
+            <span key={p.id} className="whitespace-nowrap">
+              {p.name}{" "}
+              <span className="text-faint tabular-nums">
+                {board.tasks.filter((t) => t.phaseId === p.id).length}
+              </span>
+            </span>
+          ))}
+        </div>
+
+        <div className="ml-auto flex items-center">
+          <span className="px-2 text-faint tabular-nums">
+            {board.tasks.length} total
+          </span>
+          <button type="button" onClick={addPhase} className={action}>
+            + phase
+          </button>
+          <button
+            type="button"
+            onClick={() => exportFile(board)}
+            className={action}
+          >
+            export
+          </button>
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className={action}
+          >
+            import
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="application/json,.json"
+            hidden
+            onChange={(e) => void onPickFile(e.target.files?.[0])}
+          />
+        </div>
+      </footer>
     </div>
   );
 }

@@ -73,15 +73,15 @@ export function Column({
         onDropInPhase(phase.id);
       }}
       className={[
-        "group/col relative flex w-[276px] shrink-0 flex-col rounded-md border bg-pane transition-colors",
+        "group/col relative flex w-[264px] shrink-0 flex-col border bg-pane transition-colors",
         over ? "border-accent/70" : "border-line",
       ].join(" ")}
     >
       {/* Signature: the phase label is inset into the pane border, like a multiplexer pane title. */}
-      <header className="absolute top-0 left-3 flex -translate-y-1/2 items-center gap-2 bg-ground px-2">
+      <header className="absolute top-0 left-2.5 flex -translate-y-1/2 items-center gap-2 bg-ground px-2">
         <span
           aria-hidden
-          className="size-1.5 rounded-full"
+          className="size-1.5"
           style={{ backgroundColor: phase.color }}
         />
         {renaming ? (
@@ -97,7 +97,7 @@ export function Column({
                 setRenaming(false);
               }
             }}
-            className="w-24 bg-transparent font-mono text-[11px] tracking-[0.14em] uppercase outline-none"
+            className="w-24 bg-transparent text-[11px] tracking-[0.16em] uppercase outline-none"
           />
         ) : (
           <button
@@ -106,29 +106,30 @@ export function Column({
               setNameDraft(phase.name);
               setRenaming(true);
             }}
-            className="font-mono text-[11px] tracking-[0.14em] text-muted uppercase transition-colors hover:text-ink"
+            className="text-[11px] tracking-[0.16em] text-muted uppercase transition-colors hover:text-ink"
           >
             {phase.name}
           </button>
         )}
-        <span className="font-mono text-[11px] text-faint tabular-nums">
+        <span className="text-[11px] text-faint tabular-nums">
           {tasks.length}
         </span>
         <button
           type="button"
           aria-label={`Delete phase ${phase.name}`}
           onClick={() => onDeletePhase(phase.id)}
-          className="rounded font-mono text-[11px] text-faint opacity-0 transition hover:text-ink group-hover/col:opacity-100 focus-visible:opacity-100"
+          className="text-[11px] text-faint opacity-0 transition hover:text-accent focus-visible:opacity-100 group-hover/col:opacity-100"
         >
           x
         </button>
       </header>
 
-      <div className="flex-1 space-y-2 overflow-y-auto p-2.5 pt-5">
+      <div className="flex-1 space-y-1.5 overflow-y-auto p-2 pt-4">
         {tasks.map((task) => (
           <TaskCard
             key={task.id}
             task={task}
+            color={phase.color}
             onRename={onRenameTask}
             onDelete={onDeleteTask}
             onDragStart={onDragStart}
@@ -137,12 +138,12 @@ export function Column({
         ))}
 
         {adding ? (
-          <div className="rounded border border-accent/60 bg-card-hi p-2.5">
+          <div className="border border-accent/60 bg-card-hi px-2.5 py-2">
             <textarea
               ref={addRef}
               value={draft}
               rows={2}
-              placeholder="What needs doing?"
+              placeholder="what needs doing?"
               onChange={(e) => setDraft(e.target.value)}
               onBlur={commitTask}
               onKeyDown={(e) => {
@@ -155,14 +156,14 @@ export function Column({
                   setAdding(false);
                 }
               }}
-              className="w-full resize-none bg-transparent text-sm leading-snug outline-none placeholder:text-faint"
+              className="w-full resize-none bg-transparent text-[12.5px] leading-[1.5] outline-none placeholder:text-faint"
             />
           </div>
         ) : (
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="w-full rounded px-2 py-1.5 text-left font-mono text-[11px] text-faint transition-colors hover:bg-card hover:text-ink"
+            className="w-full px-1 py-1 text-left text-[11px] text-faint transition-colors hover:text-accent"
           >
             + task
           </button>

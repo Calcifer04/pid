@@ -3,6 +3,7 @@ import type { Task } from "../types";
 
 type Props = {
   task: Task;
+  color: string;
   onRename: (id: string, title: string) => void;
   onDelete: (id: string) => void;
   onDragStart: (id: string) => void;
@@ -11,6 +12,7 @@ type Props = {
 
 export function TaskCard({
   task,
+  color,
   onRename,
   onDelete,
   onDragStart,
@@ -37,7 +39,7 @@ export function TaskCard({
 
   if (editing) {
     return (
-      <div className="rounded border border-accent/60 bg-card-hi p-2.5">
+      <div className="border border-accent/60 bg-card-hi px-2.5 py-2">
         <textarea
           ref={inputRef}
           value={draft}
@@ -54,7 +56,7 @@ export function TaskCard({
               setEditing(false);
             }
           }}
-          className="w-full resize-none bg-transparent text-sm leading-snug outline-none"
+          className="w-full resize-none bg-transparent text-[12.5px] leading-[1.5] outline-none"
         />
       </div>
     );
@@ -79,9 +81,13 @@ export function TaskCard({
         setOver(false);
         onDropBefore(task.id);
       }}
+      /* Left rule in the phase hue, like a modified-line marker in an editor gutter. */
+      style={{ borderLeftColor: over ? undefined : color }}
       className={[
-        "group relative cursor-grab rounded border bg-card p-2.5 transition-colors active:cursor-grabbing",
-        over ? "border-accent" : "border-line hover:border-faint",
+        "group relative cursor-grab border border-l-2 bg-card py-2 pr-6 pl-2.5 transition-colors active:cursor-grabbing",
+        over
+          ? "border-accent border-l-accent"
+          : "border-line hover:bg-card-hi",
       ].join(" ")}
     >
       <button
@@ -90,7 +96,7 @@ export function TaskCard({
           setDraft(task.title);
           setEditing(true);
         }}
-        className="block w-full cursor-text text-left text-sm leading-snug text-ink"
+        className="block w-full cursor-text text-left text-[12.5px] leading-[1.5] break-words text-ink"
       >
         {task.title}
       </button>
@@ -99,7 +105,7 @@ export function TaskCard({
         type="button"
         aria-label={`Delete ${task.title}`}
         onClick={() => onDelete(task.id)}
-        className="absolute top-1 right-1 rounded px-1.5 font-mono text-xs text-faint opacity-0 transition group-hover:opacity-100 hover:text-ink focus-visible:opacity-100"
+        className="absolute top-1 right-1 px-1 text-[11px] leading-none text-faint opacity-0 transition hover:text-accent focus-visible:opacity-100 group-hover:opacity-100"
       >
         x
       </button>
