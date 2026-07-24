@@ -25,23 +25,44 @@ Node **20+** required.
 
 ---
 
-## Free sync (Mac ↔ Windows ↔ phone)
+## Knowledge vault (clean)
 
-The only file that matters day-to-day:
+Markdown tree owned by this app — **not** the old Obsidian vault.
 
 ```text
-data/board.json
+vault/
+  CONVENTIONS.md     rules + status vocabulary
+  inbox/             capture
+  projects/          workstream depth notes
+  sops/              standing-duty writeups
+  journal/daily/     EOD reports (YYYY-MM-DD.md)
+  journal/worklogs/  session logs
+  _templates/        starters
 ```
+
+- **Board** (`data/board.json`) = what to do now  
+- **Vault** (`vault/`) = why / design / narrative  
+- **Legacy** `Documents/obsidian-247` = leave alone (safe archive)
+
+Optional path overrides: `ROUTINE_DATA`, `ROUTINE_VAULT` (see `.env.example`).
+
+## Free sync (Mac ↔ Windows ↔ phone)
+
+| What | Sync |
+|------|------|
+| `data/board.json` | Syncthing / iCloud (live queue) |
+| `vault/` | same share or git |
+| app code | git |
 
 ### Option A — Syncthing (recommended, fully free)
 
 1. Install [Syncthing](https://syncthing.net/) on each machine.
-2. Share the whole `routine` project folder **or** just `data/`.
-3. Run πD from that shared folder on every machine (or point `ROUTINE_DATA` at the shared board file).
+2. Share the whole `routine` project folder **or** `data/` + `vault/`.
+3. Run πD from that shared folder (or set `ROUTINE_DATA` / `ROUTINE_VAULT`).
 
 ```bash
-# example: board in a synced folder
 export ROUTINE_DATA="$HOME/Sync/pid/board.json"
+export ROUTINE_VAULT="$HOME/Sync/pid/vault"
 ./scripts/start.sh
 ```
 
@@ -49,18 +70,19 @@ Windows (PowerShell):
 
 ```powershell
 $env:ROUTINE_DATA = "$env:USERPROFILE\Sync\pid\board.json"
+$env:ROUTINE_VAULT = "$env:USERPROFILE\Sync\pid\vault"
 npm start
 ```
 
 ### Option B — iCloud / Drive / Dropbox free tier
 
-Put the project (or `data/`) inside the cloud folder. Same idea: one `board.json`, both apps read/write it.
+Put the project (or `data/` + `vault/`) inside the cloud folder.
 
-Avoid editing heavily on two devices at the **same second** (last write wins).
+Avoid editing the board heavily on two devices at the **same second** (last write wins).
 
 ### Option C — Git only
 
-Fine for code. Awkward for live board churn — prefer Syncthing for `board.json`.
+Fine for code + vault prose. Awkward for live `board.json` churn — prefer Syncthing for the board file.
 
 ---
 
@@ -113,7 +135,8 @@ Windows-only desk skins hit extra routes under `/api/rainmeter` — ignore on Ma
 
 ```text
 src/           app + assist API
-data/          board.json (synced)
+data/          board.json (execution — sync live)
+vault/         clean markdown knowledge (app-owned)
 public/        icons / PWA bits
 scripts/       start.sh · dev.sh · Windows bg helpers
 rainmeter/     optional Windows extras — not required
