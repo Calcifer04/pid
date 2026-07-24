@@ -94,6 +94,8 @@ export function applyActions(board: Board, actions: Action[]): ApplyResult {
     sopPlace: { ...(board.sopPlace ?? {}) },
     theme: board.theme ? { ...board.theme } : undefined,
     focusId: board.focusId,
+    focusRun: board.focusRun ? { ...board.focusRun } : undefined,
+    alarms: board.alarms?.map((a) => ({ ...a })),
   };
   const applied: Action[] = [];
   const rejected: ApplyResult["rejected"] = [];
@@ -276,7 +278,7 @@ function applyOne(board: Board, action: Action): Board {
     }
     case "set_focus": {
       if (action.id === null || action.id === "" || action.id === "clear") {
-        return { ...board, focusId: undefined };
+        return { ...board, focusId: undefined, focusRun: undefined };
       }
       const raw = action.id.trim();
       let key = raw;
@@ -293,7 +295,10 @@ function applyOne(board: Board, action: Action): Board {
         if (kind === "sop" && !board.sops.some((s) => s.id === id))
           throw new Error(`unknown sop ${id}`);
       }
-      return { ...board, focusId: key };
+      // Keep timer only if it already tracks this target; never auto-start.
+      const focusRun =
+        board.focusRun?.targetId === key ? board.focusRun : undefined;
+      return { ...board, focusId: key, focusRun };
     }
     case "set_pinned": {
       const idx = board.tasks.findIndex((t) => t.id === action.id);

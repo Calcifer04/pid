@@ -41,7 +41,7 @@ export function WeekView({
       </header>
 
       <div className="min-h-0 flex-1 overflow-x-auto">
-      <div className="grid min-h-full w-full min-w-[640px] grid-cols-7 gap-px border border-line bg-line sm:min-w-0">
+      <div className="grid min-h-full w-full min-w-[560px] grid-cols-7 gap-px border border-line bg-line md:min-w-0">
         {days.map((day) => {
           const all = [...day.timed, ...day.anytime];
           const done = all.filter((e) => e.done).length;

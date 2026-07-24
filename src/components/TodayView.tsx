@@ -176,10 +176,10 @@ export function TodayView({
         )}
 
         <p className="mt-4 px-1 pb-2 text-[12px] text-faint">
+          <span className="text-muted">f</span> focus ·{" "}
           <span className="text-muted">g</span> πD ·{" "}
           <span className="text-muted">← →</span> views ·{" "}
-          <span className="text-muted">[ ]</span> day ·{" "}
-          <span className="text-muted">1–5</span> jump
+          <span className="text-muted">0–5</span> jump
         </p>
       </div>
     </div>

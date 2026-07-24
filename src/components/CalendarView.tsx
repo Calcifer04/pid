@@ -91,7 +91,7 @@ export function CalendarView({
       </header>
 
       <div className="min-h-0 flex-1 overflow-x-auto">
-      <div className="grid min-h-full min-w-[560px] flex-1 grid-cols-7 grid-rows-[auto_repeat(6,minmax(0,1fr))] gap-px border border-line bg-line sm:min-w-0">
+      <div className="grid min-h-full min-w-[520px] flex-1 grid-cols-7 grid-rows-[auto_repeat(6,minmax(0,1fr))] gap-px border border-line bg-line md:min-w-0">
         {headers.map((h) => (
           <div
             key={h}

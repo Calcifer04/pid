@@ -46,7 +46,7 @@ export function BoardView({
         when finished
         {dueSops === 0 ? " · no sops yet" : ""}
       </p>
-      <div className="flex min-h-0 flex-1 items-stretch gap-3 overflow-x-auto px-3 pt-2 pb-3">
+      <div className="pid-board-scroll flex min-h-0 flex-1 items-stretch gap-3 overflow-x-auto px-3 pt-2 pb-3">
         {board.phases.map((phase) => (
           <Column
             key={phase.id}

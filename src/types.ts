@@ -1,4 +1,4 @@
-export type View = "today" | "week" | "calendar" | "sop" | "board";
+export type View = "focus" | "today" | "week" | "calendar" | "sop" | "board";
 
 export type Phase = {
   id: string;
@@ -76,6 +76,41 @@ export type Theme = {
   accent: "rgb" | string;
 };
 
+/**
+ * Live focus timer — lives on the board so every client (PC/laptop/phone)
+ * shares the same clock. Wall-clock based: `startedAt` is an epoch ms;
+ * elapsed = accumulatedMs + (now - startedAt) while running.
+ *
+ * Future notifications / alarms should key off the same board file:
+ *   - soft pulse: focusRun running + idle threshold
+ *   - SOP due / task dueTime → scheduled Alarm entries (separate list)
+ *   - delivery: Web Notification API in the browser, optional OS bridge later
+ * Do not put toast delivery state on the board — only intent (when/what).
+ */
+export type FocusRun = {
+  /** Same shape as focusId: `task:<uuid>` | `sop:<uuid>` */
+  targetId: string;
+  /** Segment start (ms). null = paused. */
+  startedAt: number | null;
+  /** Prior segments total (ms). */
+  accumulatedMs: number;
+};
+
+/**
+ * Planned local reminder (not yet delivered). Future work.
+ * Kept here so the schema is ready without another board migration.
+ */
+export type Alarm = {
+  id: string;
+  /** epoch ms */
+  at: number;
+  title: string;
+  /** optional link back to task:/sop: */
+  ref?: string;
+  /** once | daily — expand later */
+  kind?: "once";
+};
+
 export type Board = {
   phases: Phase[];
   tasks: Task[];
@@ -99,6 +134,10 @@ export type Board = {
    * Desk widget + today pulse prefer this when set and still open.
    */
   focusId?: string;
+  /** Zen focus timer (synced). */
+  focusRun?: FocusRun;
+  /** Future: due reminders / alarms (synced intent only). */
+  alarms?: Alarm[];
 };
 
 /**

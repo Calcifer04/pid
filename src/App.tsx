@@ -12,12 +12,19 @@ import {
   DetailPanel,
   type DetailTarget,
 } from "./components/DetailPanel";
+import { FocusView } from "./components/FocusView";
 import { GrokPanel, type GrokRefItem } from "./components/GrokPanel";
 import { SopView } from "./components/SopView";
 import { StatusChip } from "./components/StatusChip";
 import { TodayView } from "./components/TodayView";
 import { WeekView } from "./components/WeekView";
 import { cadenceLabel } from "./lib/cadence";
+import {
+  clearFocusRun,
+  focusRef,
+  pauseFocusRun,
+  startFocusRun,
+} from "./lib/focus-run";
 import {
   addDays,
   addMonths,
@@ -262,7 +269,14 @@ export default function App() {
         return;
       }
 
-      const order: View[] = ["today", "week", "calendar", "sop", "board"];
+      const order: View[] = [
+        "focus",
+        "today",
+        "week",
+        "calendar",
+        "sop",
+        "board",
+      ];
 
       if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
         e.preventDefault();
@@ -276,7 +290,10 @@ export default function App() {
         return;
       }
 
-      if (e.key === "1") {
+      if (e.key === "0" || e.key === "f" || e.key === "F") {
+        e.preventDefault();
+        setView("focus");
+      } else if (e.key === "1") {
         e.preventDefault();
         setView("today");
       } else if (e.key === "2") {
@@ -291,6 +308,16 @@ export default function App() {
       } else if (e.key === "5") {
         e.preventDefault();
         setView("board");
+      } else if (e.key === " ") {
+        if (view !== "focus") return;
+        e.preventDefault();
+        setBoard((b) => {
+          if (!b.focusRun?.targetId && !b.focusId) return b;
+          if (b.focusRun?.startedAt != null) return pauseFocusRun(b);
+          const target = b.focusRun?.targetId ?? b.focusId;
+          if (!target) return b;
+          return startFocusRun(b, target);
+        });
       } else if (e.key === "[") {
         if (view !== "today" && view !== "week" && view !== "calendar") return;
         e.preventDefault();
@@ -383,16 +410,86 @@ export default function App() {
   }
 
   function deleteTask(id: string) {
-    setBoard((b) => ({ ...b, tasks: b.tasks.filter((t) => t.id !== id) }));
+    setBoard((b) => {
+      const ref = focusRef("task", id);
+      const clearing =
+        b.focusId === ref || b.focusRun?.targetId === ref;
+      return {
+        ...b,
+        tasks: b.tasks.filter((t) => t.id !== id),
+        focusId: clearing ? undefined : b.focusId,
+        focusRun: clearing ? undefined : b.focusRun,
+      };
+    });
   }
 
   function toggleTaskDone(id: string) {
-    setBoard((b) => ({
-      ...b,
-      tasks: b.tasks.map((t) =>
+    setBoard((b) => {
+      const tasks = b.tasks.map((t) =>
         t.id === id ? { ...t, done: !t.done } : t,
-      ),
-    }));
+      );
+      const t = tasks.find((x) => x.id === id);
+      const ref = focusRef("task", id);
+      // Completing the focused task ends the run.
+      if (t?.done && (b.focusId === ref || b.focusRun?.targetId === ref)) {
+        return {
+          ...b,
+          tasks,
+          focusId: undefined,
+          focusRun: undefined,
+        };
+      }
+      return { ...b, tasks };
+    });
+  }
+
+  function beginFocus(kind: "task" | "sop", id: string) {
+    setBoard((b) => startFocusRun(b, focusRef(kind, id)));
+    setView("focus");
+    setDetail(null);
+  }
+
+  function pauseFocus() {
+    setBoard((b) => pauseFocusRun(b));
+  }
+
+  function resumeFocus() {
+    setBoard((b) => {
+      const target = b.focusRun?.targetId ?? b.focusId;
+      if (!target) return b;
+      return startFocusRun(b, target);
+    });
+  }
+
+  function clearFocus() {
+    setBoard((b) => clearFocusRun(b));
+  }
+
+  function completeFocus() {
+    setBoard((b) => {
+      const target = b.focusRun?.targetId ?? b.focusId;
+      if (!target) return clearFocusRun(b);
+      let next = clearFocusRun(b);
+      if (target.startsWith("task:")) {
+        const id = target.slice(5);
+        next = {
+          ...next,
+          tasks: next.tasks.map((t) =>
+            t.id === id ? { ...t, done: true } : t,
+          ),
+        };
+      } else if (target.startsWith("sop:")) {
+        const id = target.slice(4);
+        next = {
+          ...next,
+          sopLog: {
+            ...next.sopLog,
+            [routineLogKey(id, dayKey)]: Date.now(),
+          },
+        };
+      }
+      return next;
+    });
   }
 
   function addPhase() {
@@ -641,6 +738,7 @@ export default function App() {
   }
 
   const views: { id: View; label: string; key: string }[] = [
+    { id: "focus", label: "focus", key: "0" },
     { id: "today", label: "today", key: "1" },
     { id: "week", label: "week", key: "2" },
     { id: "calendar", label: "cal", key: "3" },
@@ -669,7 +767,12 @@ export default function App() {
   const colTasks = "#ffb454";
 
   return (
-    <div className="pid-shell flex h-full flex-col bg-ground">
+    <div
+      className={[
+        "pid-shell flex h-full flex-col bg-ground",
+        view === "focus" ? "pid-shell-zen" : "",
+      ].join(" ")}
+    >
       <GrokPanel
         open={grokOpen}
         busy={assistBusy}
@@ -700,7 +803,7 @@ export default function App() {
         </button>
       )}
 
-      <nav className="flex items-center gap-1 overflow-x-auto border-b border-line px-2 py-2 sm:px-4">
+      <nav className="pid-nav flex items-center gap-0.5 overflow-x-auto border-b border-line px-2 py-1.5 sm:gap-1 sm:px-4 sm:py-2">
         {views.map((v) => {
           const active = view === v.id;
           return (
@@ -709,10 +812,13 @@ export default function App() {
               type="button"
               onClick={() => setView(v.id)}
               className={[
-                "shrink-0 px-2.5 py-2 text-[13px] tracking-wide uppercase transition-colors sm:py-1.5",
+                "shrink-0 px-2.5 py-2.5 text-[13px] tracking-wide uppercase transition-colors sm:py-1.5",
                 active
                   ? "bg-card-hi text-accent"
                   : "text-faint hover:text-muted",
+                v.id === "focus" && board.focusRun?.startedAt != null
+                  ? "text-accent"
+                  : "",
               ].join(" ")}
             >
               <span className="mr-1.5 hidden text-[12px] text-faint tabular-nums sm:inline">
@@ -726,6 +832,18 @@ export default function App() {
 
       <div className="relative flex min-h-0 flex-1 flex-col md:flex-row">
         <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto">
+          {view === "focus" && (
+            <FocusView
+              board={board}
+              onStart={beginFocus}
+              onPause={pauseFocus}
+              onResume={resumeFocus}
+              onDone={completeFocus}
+              onClear={clearFocus}
+              onOpenDetail={(kind, id) => setDetail({ kind, id })}
+              onPickFromToday={() => setView("today")}
+            />
+          )}
           {view === "today" && (
             <TodayView
               dateKey={dayKey}
@@ -805,33 +923,42 @@ export default function App() {
         </main>
 
         {detail && (
-          <DetailPanel
-            target={detail}
-            task={
-              detail.kind === "task"
-                ? board.tasks.find((t) => t.id === detail.id)
-                : undefined
-            }
-            sop={
-              detail.kind === "sop"
-                ? board.sops.find((s) => s.id === detail.id)
-                : undefined
-            }
-            phases={board.phases}
-            onClose={() => setDetail(null)}
-            onPatchTask={patchTask}
-            onPatchSop={patchSop}
-            onDeleteTask={(id) => {
-              deleteTask(id);
-              setDetail(null);
-            }}
-            onDeleteSop={(id) => {
-              deleteSop(id);
-              setDetail(null);
-            }}
-            onToggleTaskDone={toggleTaskDone}
-            onToggleSopDone={(id) => toggleSopDoneOnDay(id, dayKey)}
-          />
+          <>
+            <button
+              type="button"
+              className="detail-backdrop"
+              aria-label="Close detail"
+              onClick={() => setDetail(null)}
+            />
+            <DetailPanel
+              target={detail}
+              task={
+                detail.kind === "task"
+                  ? board.tasks.find((t) => t.id === detail.id)
+                  : undefined
+              }
+              sop={
+                detail.kind === "sop"
+                  ? board.sops.find((s) => s.id === detail.id)
+                  : undefined
+              }
+              phases={board.phases}
+              onClose={() => setDetail(null)}
+              onPatchTask={patchTask}
+              onPatchSop={patchSop}
+              onDeleteTask={(id) => {
+                deleteTask(id);
+                setDetail(null);
+              }}
+              onDeleteSop={(id) => {
+                deleteSop(id);
+                setDetail(null);
+              }}
+              onToggleTaskDone={toggleTaskDone}
+              onToggleSopDone={(id) => toggleSopDoneOnDay(id, dayKey)}
+              onStartFocus={beginFocus}
+            />
+          </>
         )}
       </div>
 
@@ -856,7 +983,7 @@ export default function App() {
         </p>
       )}
 
-      <footer className="flex shrink-0 flex-wrap items-center gap-y-1 border-t border-line bg-pane text-[13px]">
+      <footer className="pid-footer flex shrink-0 flex-wrap items-center gap-y-1 border-t border-line bg-pane text-[13px]">
         <button
           type="button"
           className="brand-mark brand-mark-fill text-[14px]"
@@ -961,14 +1088,14 @@ export default function App() {
           <button
             type="button"
             onClick={() => exportFile(board)}
-            className={action}
+            className={`${action} pid-footer-extra`}
           >
             export
           </button>
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className={action}
+            className={`${action} pid-footer-extra`}
           >
             import
           </button>

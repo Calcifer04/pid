@@ -29,6 +29,8 @@ type Props = {
   onDeleteSop: (id: string) => void;
   onToggleTaskDone: (id: string) => void;
   onToggleSopDone: (id: string) => void;
+  /** Open zen focus + start timer on this item. */
+  onStartFocus?: (kind: "task" | "sop", id: string) => void;
 };
 
 /**
@@ -46,6 +48,7 @@ export function DetailPanel({
   onDeleteSop,
   onToggleTaskDone,
   onToggleSopDone,
+  onStartFocus,
 }: Props) {
   const isTask = target.kind === "task";
   const title = isTask ? task?.title : sop?.title;
@@ -121,6 +124,17 @@ export function DetailPanel({
         />
 
         <div className="flex flex-wrap items-center gap-2">
+          {onStartFocus && (
+            <button
+              type="button"
+              onClick={() =>
+                onStartFocus(isTask ? "task" : "sop", target.id)
+              }
+              className="border border-accent/45 bg-accent/10 px-2.5 py-1.5 text-[13px] text-accent transition-colors hover:bg-accent/15"
+            >
+              start focus
+            </button>
+          )}
           <button
             type="button"
             onClick={() =>

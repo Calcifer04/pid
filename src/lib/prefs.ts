@@ -3,7 +3,7 @@ import type { View } from "../types";
 const VIEW_KEY = "routine.view";
 const PHASE_KEY = "routine.capturePhase";
 
-const VIEWS: View[] = ["today", "week", "calendar", "sop", "board"];
+const VIEWS: View[] = ["focus", "today", "week", "calendar", "sop", "board"];
 
 export function loadView(fallback: View = "today"): View {
   try {

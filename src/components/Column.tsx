@@ -68,7 +68,7 @@ export function Column({
         onDropInPhase(phase.id);
       }}
       className={[
-        "group/col flex min-h-0 min-w-[260px] flex-1 flex-col border bg-pane transition-colors",
+        "group/col flex min-h-0 min-w-[min(85vw,280px)] flex-1 flex-col border bg-pane transition-colors sm:min-w-[260px]",
         over
           ? "border-accent shadow-[0_0_0_1px_var(--color-accent)]"
           : "border-line",

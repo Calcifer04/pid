@@ -1,5 +1,13 @@
 import { cadenceFromLegacyDays } from "./lib/cadence";
-import type { Board, Cadence, Phase, Sop, Task, Theme } from "./types";
+import type {
+  Board,
+  Cadence,
+  FocusRun,
+  Phase,
+  Sop,
+  Task,
+  Theme,
+} from "./types";
 import { PHASE_COLOR_MIGRATE, PHASE_COLORS } from "./types";
 
 export type { Board };
@@ -156,6 +164,28 @@ export function coerceBoard(raw: unknown): Board | null {
       typeof b.focusId === "string" && b.focusId.trim()
         ? b.focusId.trim()
         : undefined,
+    focusRun: coerceFocusRun(b.focusRun),
+  };
+}
+
+function coerceFocusRun(raw: unknown): FocusRun | undefined {
+  if (typeof raw !== "object" || raw === null) return undefined;
+  const x = raw as Partial<FocusRun>;
+  if (typeof x.targetId !== "string" || !x.targetId.trim()) return undefined;
+  const accumulatedMs =
+    typeof x.accumulatedMs === "number" && x.accumulatedMs >= 0
+      ? x.accumulatedMs
+      : 0;
+  const startedAt =
+    x.startedAt === null
+      ? null
+      : typeof x.startedAt === "number" && x.startedAt > 0
+        ? x.startedAt
+        : null;
+  return {
+    targetId: x.targetId.trim(),
+    startedAt,
+    accumulatedMs,
   };
 }
 
@@ -198,7 +228,8 @@ export function boardWeight(b: Board): number {
     b.sops.length * 10 +
     b.tasks.length * 3 +
     Object.keys(b.sopLog).length +
-    b.phases.length
+    b.phases.length +
+    (b.focusRun ? 2 : 0)
   );
 }
 

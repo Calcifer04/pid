@@ -50,7 +50,7 @@ export function SopView({
 }: Props) {
   const today = toDateKey();
   return (
-    <div className="flex h-full min-h-0 flex-1 items-stretch gap-3 overflow-x-auto px-3 pt-3 pb-3">
+    <div className="pid-sop-scroll flex h-full min-h-0 flex-1 items-stretch gap-3 overflow-x-auto px-3 pt-3 pb-3">
       {COLS.map((col) => {
         const items = sops.filter((s) => cadenceBucket(s.cadence) === col.id);
         return (

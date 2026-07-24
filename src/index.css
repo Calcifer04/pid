@@ -163,12 +163,47 @@
   }
 }
 
-/* —— mobile shell —— */
+/* —— shell / safe areas —— */
 .pid-shell {
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* Zen focus view: quieter chrome */
+.pid-shell-zen .pid-nav {
+  border-color: color-mix(in srgb, var(--color-line) 55%, transparent);
+  background: transparent;
+}
+
+.pid-shell-zen .pid-footer {
+  border-color: color-mix(in srgb, var(--color-line) 55%, transparent);
+  background: color-mix(in srgb, var(--color-pane) 70%, transparent);
+}
+
+.focus-timer {
+  font-size: clamp(3.25rem, 14vw, 5.5rem);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 40px color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+
+.focus-zen {
+  background:
+    radial-gradient(
+      ellipse 80% 55% at 50% 42%,
+      color-mix(in srgb, var(--color-accent) 6%, transparent),
+      transparent 70%
+    ),
+    var(--color-ground);
+}
+
+/* Detail dimmer — phones + thin windows */
+.detail-backdrop {
+  display: none;
 }
 
 /* Floating assist — phones have no `g` key */
@@ -199,6 +234,7 @@
   transform: scale(0.96);
 }
 
+/* Thin window + phone */
 @media (max-width: 768px) {
   .pid-fab {
     display: flex;
@@ -208,22 +244,63 @@
     font-size: 14px;
   }
 
-}
+  .pid-footer-extra {
+    display: none;
+  }
 
-/* Detail drawer becomes a bottom sheet on small screens */
-@media (max-width: 768px) {
+  .pid-nav {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .pid-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Bottom sheet detail */
+  .detail-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 44;
+    border: 0;
+    background: color-mix(in srgb, #030304 55%, transparent);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+
   .detail-panel {
     position: fixed;
     inset: auto 0 0 0;
     z-index: 45;
     max-width: none !important;
     width: 100% !important;
-    height: min(78dvh, 640px);
+    height: min(82dvh, 720px);
     border-left: none !important;
     border-top: 1px solid var(--color-line);
     border-radius: 14px 14px 0 0;
     box-shadow: 0 -16px 48px color-mix(in srgb, #000 55%, transparent);
     padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Horizontal boards: snap columns, roomier touch */
+  .pid-board-scroll,
+  .pid-sop-scroll {
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.5rem;
+  }
+
+  .pid-board-scroll > *,
+  .pid-sop-scroll > * {
+    scroll-snap-align: start;
+  }
+}
+
+/* Very narrow */
+@media (max-width: 420px) {
+  .focus-timer {
+    font-size: clamp(2.75rem, 18vw, 4rem);
   }
 }
 
