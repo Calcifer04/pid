@@ -1,0 +1,18 @@
+{
+  "name": "πD",
+  "short_name": "πD",
+  "description": "Personal ops board",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#030304",
+  "theme_color": "#030304",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

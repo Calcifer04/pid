@@ -1,41 +1,64 @@
 @import "tailwindcss";
 
-@theme {
-  /* Editor-dark: near black with a blue cast, so the syntax hues stay legible on it. */
-  --color-ground: #0a0c10;
-  --color-pane: #0f1218;
-  --color-card: #141821;
-  --color-card-hi: #1a1f2a;
-  --color-line: #1f242e;
-  --color-ink: #d8dee9;
-  --color-muted: #6b7486;
-  --color-faint: #454d5c;
+/* Animatable hue for RGB accent cycle (default chrome) */
+@property --accent-h {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 145;
+}
 
-  /* Amber phosphor stays the primary. Phase dots pull from the syntax ramp in types.ts. */
-  --color-accent: #e8a55c;
+@theme {
+  /* Void black. Zero blue cast — hues do all the work. */
+  --color-ground: #030304;
+  --color-pane: #08080b;
+  --color-card: #0c0c10;
+  --color-card-hi: #121218;
+  --color-line: #1c1c26;
+  /* Body text stays high-contrast. Identity color = gutters/dots only. */
+  --color-ink: #e6e6ef;
+  --color-muted: #9a9aab;
+  --color-faint: #555566;
+
+  /* Default accent tracks the RGB cycle via --accent-h */
+  --color-accent: hsl(var(--accent-h) 92% 66%);
 
   --font-mono: ui-monospace, "Cascadia Code", "JetBrains Mono", Consolas, Menlo,
     monospace;
 }
 
 @layer base {
+  /* RGB cycle unless board.theme.accent pins a static hex */
+  html[data-accent="rgb"],
+  html:not([data-accent]) {
+    animation: accent-rgb 12s linear infinite;
+  }
+
+  html[data-accent="static"] {
+    animation: none;
+  }
+
   html,
   body,
   #root {
     height: 100%;
+    height: 100dvh;
   }
 
   body {
     background-color: var(--color-ground);
     color: var(--color-ink);
-    /* Monospace throughout, chrome and content alike. */
     font-family: var(--font-mono);
-    font-size: 13px;
+    font-size: 15px;
+    line-height: 1.45;
     -webkit-font-smoothing: antialiased;
+    /* Stop iOS rubber-band revealing white */
+    overscroll-behavior: none;
+    touch-action: manipulation;
   }
 
   ::selection {
-    background-color: color-mix(in srgb, var(--color-accent) 28%, transparent);
+    background-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
+    color: #fff;
   }
 
   :focus-visible {
@@ -44,22 +67,181 @@
   }
 
   input,
-  textarea {
+  textarea,
+  button {
     font: inherit;
     color: inherit;
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
+@keyframes accent-rgb {
+  0% {
+    --accent-h: 0;
+  }
+  100% {
+    --accent-h: 360;
   }
 }
 
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--color-line) transparent;
+}
+
+/* πD wordmark — rides the RGB accent */
+.brand-mark {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.02em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  user-select: none;
+}
+
+.brand-mark-fill {
+  padding: 0.55rem 0.85rem;
+  color: var(--color-ground);
+  background: var(--color-accent);
+  box-shadow:
+    0 0 18px -2px var(--color-accent),
+    0 0 40px -12px color-mix(in srgb, var(--color-accent) 55%, transparent);
+}
+
+.brand-mark-ghost {
+  color: var(--color-accent);
+  text-shadow: 0 0 18px color-mix(in srgb, var(--color-accent) 55%, transparent);
+}
+
+.brand-mark .brand-pi {
+  font-size: 1.15em;
+  font-weight: 700;
+}
+
+/* Centered glass assist panel */
+.pid-overlay {
+  background: color-mix(in srgb, #030304 55%, transparent);
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+  animation: pid-fade 120ms ease-out;
+}
+
+.pid-glass {
+  border: 1px solid color-mix(in srgb, #ffffff 10%, transparent);
+  border-radius: 14px;
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, #14141c 78%, transparent) 0%,
+    color-mix(in srgb, #0a0a0f 82%, transparent) 100%
+  );
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-accent) 12%, transparent),
+    0 24px 80px color-mix(in srgb, #000 65%, transparent),
+    0 0 60px -20px color-mix(in srgb, var(--color-accent) 35%, transparent);
+  backdrop-filter: blur(28px) saturate(1.35);
+  -webkit-backdrop-filter: blur(28px) saturate(1.35);
+  animation: pid-rise 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes pid-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pid-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* —— mobile shell —— */
+.pid-shell {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* Floating assist — phones have no `g` key */
+.pid-fab {
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right, 0px));
+  bottom: max(4.5rem, calc(env(safe-area-inset-bottom, 0px) + 4.25rem));
+  z-index: 40;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 999px;
+  color: var(--color-ground);
+  background: var(--color-accent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-accent) 40%, transparent),
+    0 8px 28px color-mix(in srgb, #000 55%, transparent),
+    0 0 24px -4px var(--color-accent);
+  font-weight: 700;
+  font-size: 1.05rem;
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pid-fab:active {
+  transform: scale(0.96);
+}
+
+@media (max-width: 768px) {
+  .pid-fab {
+    display: flex;
+  }
+
+  body {
+    font-size: 14px;
+  }
+
+}
+
+/* Detail drawer becomes a bottom sheet on small screens */
+@media (max-width: 768px) {
+  .detail-panel {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 45;
+    max-width: none !important;
+    width: 100% !important;
+    height: min(78dvh, 640px);
+    border-left: none !important;
+    border-top: 1px solid var(--color-line);
+    border-radius: 14px 14px 0 0;
+    box-shadow: 0 -16px 48px color-mix(in srgb, #000 55%, transparent);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-accent="rgb"],
+  html:not([data-accent]) {
+    animation: none;
+    --accent-h: 145; /* static green when motion is reduced */
+  }
+
+  .pid-overlay,
+  .pid-glass {
+    animation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
 }

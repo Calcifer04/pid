@@ -1,43 +1,45 @@
 import { useEffect, useRef, useState } from "react";
-import type { Phase, Task } from "../types";
-import { TaskCard } from "./TaskCard";
+import type { BoardCard } from "../lib/board";
+import type { Phase } from "../types";
+import { taskColor } from "../types";
+import { SopCard } from "./SopCard";
+import { TaskRow } from "./TaskRow";
 
 type Props = {
   phase: Phase;
-  tasks: Task[];
-  onAddTask: (phaseId: string, title: string) => void;
+  cards: BoardCard[];
   onRenameTask: (id: string, title: string) => void;
   onDeleteTask: (id: string) => void;
+  onToggleTaskDone: (id: string) => void;
+  onToggleSopDone: (id: string) => void;
+  onOpenTask: (id: string) => void;
+  onOpenSop: (id: string) => void;
   onRenamePhase: (id: string, name: string) => void;
   onDeletePhase: (id: string) => void;
-  onDragStart: (id: string) => void;
+  onDragStart: (kind: "task" | "sop", id: string) => void;
   onDropInPhase: (phaseId: string) => void;
-  onDropBefore: (targetId: string) => void;
+  onDropBefore: (kind: "task" | "sop", targetId: string) => void;
 };
 
 export function Column({
   phase,
-  tasks,
-  onAddTask,
+  cards,
   onRenameTask,
   onDeleteTask,
+  onToggleTaskDone,
+  onToggleSopDone,
+  onOpenTask,
+  onOpenSop,
   onRenamePhase,
   onDeletePhase,
   onDragStart,
   onDropInPhase,
   onDropBefore,
 }: Props) {
-  const [adding, setAdding] = useState(false);
-  const [draft, setDraft] = useState("");
   const [renaming, setRenaming] = useState(false);
   const [nameDraft, setNameDraft] = useState(phase.name);
   const [over, setOver] = useState(false);
-  const addRef = useRef<HTMLTextAreaElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (adding) addRef.current?.focus();
-  }, [adding]);
 
   useEffect(() => {
     if (renaming) {
@@ -45,13 +47,6 @@ export function Column({
       nameRef.current?.select();
     }
   }, [renaming]);
-
-  function commitTask() {
-    const title = draft.trim();
-    if (title) onAddTask(phase.id, title);
-    setDraft("");
-    setAdding(false);
-  }
 
   function commitName() {
     const next = nameDraft.trim();
@@ -73,16 +68,20 @@ export function Column({
         onDropInPhase(phase.id);
       }}
       className={[
-        "group/col relative flex w-[264px] shrink-0 flex-col border bg-pane transition-colors",
-        over ? "border-accent/70" : "border-line",
+        "group/col flex min-h-0 min-w-[260px] flex-1 flex-col border bg-pane transition-colors",
+        over
+          ? "border-accent shadow-[0_0_0_1px_var(--color-accent)]"
+          : "border-line",
       ].join(" ")}
     >
-      {/* Signature: the phase label is inset into the pane border, like a multiplexer pane title. */}
-      <header className="absolute top-0 left-2.5 flex -translate-y-1/2 items-center gap-2 bg-ground px-2">
+      <header className="flex h-11 shrink-0 items-center gap-2.5 border-b border-line px-3">
         <span
           aria-hidden
-          className="size-1.5"
-          style={{ backgroundColor: phase.color }}
+          className="size-2 shrink-0 rounded-full"
+          style={{
+            backgroundColor: phase.color,
+            boxShadow: `0 0 8px ${phase.color}`,
+          }}
         />
         {renaming ? (
           <input
@@ -97,7 +96,7 @@ export function Column({
                 setRenaming(false);
               }
             }}
-            className="w-24 bg-transparent text-[11px] tracking-[0.16em] uppercase outline-none"
+            className="min-w-0 flex-1 bg-transparent text-[13px] tracking-[0.14em] text-ink uppercase outline-none"
           />
         ) : (
           <button
@@ -106,67 +105,53 @@ export function Column({
               setNameDraft(phase.name);
               setRenaming(true);
             }}
-            className="text-[11px] tracking-[0.16em] text-muted uppercase transition-colors hover:text-ink"
+            className="min-w-0 flex-1 truncate text-left text-[13px] tracking-[0.14em] text-ink uppercase transition-colors hover:text-accent"
           >
             {phase.name}
           </button>
         )}
-        <span className="text-[11px] text-faint tabular-nums">
-          {tasks.length}
+        <span className="w-5 shrink-0 text-right text-[13px] text-faint tabular-nums">
+          {cards.length}
         </span>
         <button
           type="button"
           aria-label={`Delete phase ${phase.name}`}
           onClick={() => onDeletePhase(phase.id)}
-          className="text-[11px] text-faint opacity-0 transition hover:text-accent focus-visible:opacity-100 group-hover/col:opacity-100"
+          className="w-4 shrink-0 text-[13px] text-faint opacity-0 transition hover:text-accent focus-visible:opacity-100 group-hover/col:opacity-100"
         >
-          x
+          ×
         </button>
       </header>
 
-      <div className="flex-1 space-y-1.5 overflow-y-auto p-2 pt-4">
-        {tasks.map((task) => (
-          <TaskCard
-            key={task.id}
-            task={task}
-            color={phase.color}
-            onRename={onRenameTask}
-            onDelete={onDeleteTask}
-            onDragStart={onDragStart}
-            onDropBefore={onDropBefore}
-          />
-        ))}
-
-        {adding ? (
-          <div className="border border-accent/60 bg-card-hi px-2.5 py-2">
-            <textarea
-              ref={addRef}
-              value={draft}
-              rows={2}
-              placeholder="what needs doing?"
-              onChange={(e) => setDraft(e.target.value)}
-              onBlur={commitTask}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  commitTask();
-                }
-                if (e.key === "Escape") {
-                  setDraft("");
-                  setAdding(false);
-                }
-              }}
-              className="w-full resize-none bg-transparent text-[12.5px] leading-[1.5] outline-none placeholder:text-faint"
+      <div className="flex min-h-[200px] flex-1 flex-col gap-1.5 overflow-y-auto p-2.5">
+        {cards.map((card) =>
+          card.kind === "task" ? (
+            <TaskRow
+              key={`t:${card.id}`}
+              task={card.task}
+              color={taskColor(card.task)}
+              draggable
+              onRename={onRenameTask}
+              onDelete={onDeleteTask}
+              onToggleDone={onToggleTaskDone}
+              onOpen={onOpenTask}
+              onDragStart={(id) => onDragStart("task", id)}
+              onDropBefore={(id) => onDropBefore("task", id)}
             />
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setAdding(true)}
-            className="w-full px-1 py-1 text-left text-[11px] text-faint transition-colors hover:text-accent"
-          >
-            + task
-          </button>
+          ) : (
+            <SopCard
+              key={`s:${card.id}`}
+              sop={card.sop}
+              done={card.done}
+              onToggleDone={onToggleSopDone}
+              onOpen={onOpenSop}
+              onDragStart={(id) => onDragStart("sop", id)}
+              onDropBefore={(id) => onDropBefore("sop", id)}
+            />
+          ),
+        )}
+        {cards.length === 0 && (
+          <p className="px-1 py-3 text-[13px] text-faint">empty</p>
         )}
       </div>
     </section>

@@ -1,5 +1,20 @@
 node_modules/
 dist/
+
+# personal board + desk state (sync via Syncthing/iCloud, not git)
+data/*
+!data/.gitkeep
+
+# secrets
 *.local
+.env
+.env.local
+.env.*.local
+
+# OS / editor
 .DS_Store
 Thumbs.db
+*.log
+.vscode/
+.idea/
+rainmeter/piD/_build_ini.py
