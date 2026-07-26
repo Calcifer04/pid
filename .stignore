@@ -1,0 +1,17 @@
+# Syncthing ignore - keep piD light and cross-platform
+# https://docs.syncthing.net/users/ignoring.html
+
+# deps and build (reinstall per machine - native binaries differ)
+node_modules
+dist
+
+# git history (optional; board + vault are the live truth)
+.git
+
+# junk
+*.log
+.DS_Store
+Thumbs.db
+.vscode
+.idea
+.vite

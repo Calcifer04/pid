@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Start πD (core app only — no Rainmeter / spotlight).
+# Start πD.
 # Mac / Linux:  ./scripts/start.sh
 # Optional:     ROUTINE_DATA=~/Sync/pid/board.json ./scripts/start.sh
 set -euo pipefail

@@ -2,7 +2,7 @@
   "name": "pid",
   "private": true,
   "version": "0.1.0",
-  "description": "piD local board (today/week/SOPs). Core web app only — no Rainmeter/spotlight required.",
+  "description": "piD local board (today/week/SOPs/calendar). Lightweight local web app.",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,7 +12,9 @@
     "preview": "vite preview --host 0.0.0.0 --port 4000 --strictPort",
     "start": "vite preview --host 0.0.0.0 --port 4000 --strictPort",
     "start:bg": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/start-bg.ps1",
-    "start:unix": "bash ./scripts/start.sh"
+    "start:unix": "bash ./scripts/start.sh",
+    "open": "node ./scripts/open.js",
+    "install:app": "node ./scripts/install-app.js"
   },
   "dependencies": {
     "react": "^19.2.8",

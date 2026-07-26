@@ -2,8 +2,8 @@ import type { Plugin } from "vite";
 import type { Connect } from "vite";
 import { handleAssistRequest } from "./server";
 import { handleBoardRequest } from "./board-file";
-import { handleDeskRequest } from "./desk";
-import { handleRainmeterRequest } from "./rainmeter";
+import { handleCalendarRequest } from "./calendar-api";
+import { handleGoogleRequest } from "./google-cal";
 
 function mountApi(root: string): Connect.NextHandleFunction {
   return (req, res, next) => {
@@ -16,19 +16,22 @@ function mountApi(root: string): Connect.NextHandleFunction {
       void handleBoardRequest(req, res, root);
       return;
     }
-    if (url.startsWith("/api/desk")) {
-      void handleDeskRequest(req, res, root);
+    if (
+      url.startsWith("/api/calendar") ||
+      url.startsWith("/api/calendar.ics")
+    ) {
+      void handleCalendarRequest(req, res, root);
       return;
     }
-    if (url.startsWith("/api/rainmeter")) {
-      void handleRainmeterRequest(req, res, root);
+    if (url.startsWith("/api/google")) {
+      void handleGoogleRequest(req, res, root);
       return;
     }
     next();
   };
 }
 
-/** Mounts /api/assist + /api/board + /api/rainmeter on vite dev + preview. */
+/** Mounts board / assist / calendar ICS / Google Calendar APIs. */
 export function assistPlugin(): Plugin {
   return {
     name: "pid-api",

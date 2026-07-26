@@ -18,7 +18,9 @@ type Props = {
   onDeleteTask: (id: string) => void;
 };
 
-/** Minimal 7-day strip. */
+/**
+ * Week grid on md+, stacked day list on small screens (flipped axis).
+ */
 export function WeekView({
   mondayKey,
   days,
@@ -31,7 +33,7 @@ export function WeekView({
 
   return (
     <div className="flex h-full min-h-0 flex-col px-2 py-3 sm:px-3">
-      <header className="mb-3 flex items-baseline gap-2 px-1">
+      <header className="mb-3 flex shrink-0 items-baseline gap-2 px-1">
         <h1 className="text-[13px] tracking-[0.18em] text-muted uppercase">
           week
         </h1>
@@ -40,109 +42,144 @@ export function WeekView({
         </span>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-x-auto">
-      <div className="grid min-h-full w-full min-w-[560px] grid-cols-7 gap-px border border-line bg-line md:min-w-0">
-        {days.map((day) => {
-          const all = [...day.timed, ...day.anytime];
-          const done = all.filter((e) => e.done).length;
-          const isToday = day.dateKey === today;
-          const d = new Date(day.dateKey + "T12:00:00");
+      {/*
+        Mobile: vertical stack (one day per row).
+        md+: classic 7-column week strip.
+      */}
+      <div className="min-h-0 flex-1 overflow-y-auto md:overflow-x-auto md:overflow-y-hidden">
+        <div
+          className={[
+            "flex flex-col gap-px border border-line bg-line",
+            "md:grid md:min-h-full md:w-full md:grid-cols-7 md:flex-none",
+          ].join(" ")}
+        >
+          {days.map((day) => {
+            const all = [...day.timed, ...day.anytime];
+            const done = all.filter((e) => e.done).length;
+            const isToday = day.dateKey === today;
+            const d = new Date(day.dateKey + "T12:00:00");
+            const weekday = d.toLocaleDateString(undefined, {
+              weekday: "short",
+            });
 
-          return (
-            <section
-              key={day.dateKey}
-              className={[
-                "flex min-h-0 flex-col bg-pane",
-                isToday ? "bg-card" : "",
-              ].join(" ")}
-            >
-              <button
-                type="button"
-                onClick={() => onSelectDay(day.dateKey)}
+            return (
+              <section
+                key={day.dateKey}
                 className={[
-                  "flex items-center justify-between border-b border-line px-2.5 py-2 text-left",
-                  isToday ? "border-accent/30" : "",
+                  "flex bg-pane",
+                  /* mobile: horizontal day band */
+                  "flex-row items-stretch",
+                  /* desktop: column day cell */
+                  "md:min-h-0 md:flex-col",
+                  isToday ? "bg-card" : "",
                 ].join(" ")}
               >
-                <span
+                <button
+                  type="button"
+                  onClick={() => onSelectDay(day.dateKey)}
                   className={[
-                    "text-[12px] tracking-wide uppercase",
-                    isToday ? "text-accent" : "text-faint",
+                    "flex shrink-0 text-left transition-colors",
+                    /* mobile: left rail */
+                    "w-[4.5rem] flex-col items-start justify-center gap-0.5 border-r border-line px-2.5 py-3",
+                    /* desktop: top header */
+                    "md:w-auto md:flex-row md:items-center md:justify-between md:border-r-0 md:border-b md:px-2.5 md:py-2",
+                    isToday ? "border-accent/30 md:border-accent/30" : "",
                   ].join(" ")}
                 >
-                  {d.toLocaleDateString(undefined, { weekday: "short" })}
-                </span>
-                <span
-                  className={[
-                    "text-[15px] tabular-nums",
-                    isToday ? "text-accent" : "text-muted",
-                  ].join(" ")}
-                >
-                  {d.getDate()}
-                </span>
-              </button>
-
-              <div className="px-2.5 py-1.5 text-[12px] text-faint tabular-nums">
-                {all.length ? `${done}/${all.length}` : "—"}
-              </div>
-
-              <div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-1.5 pb-1.5">
-                {all.map((e) => (
-                  <div
-                    key={e.key}
+                  <span
                     className={[
-                      "flex w-full items-start gap-1.5 border-l-2 px-2 py-1.5",
-                      e.done ? "opacity-40" : "bg-card/50",
+                      "text-[12px] tracking-wide uppercase",
+                      isToday ? "text-accent" : "text-faint",
                     ].join(" ")}
-                    style={{ borderLeftColor: e.color }}
                   >
-                    <button
-                      type="button"
-                      aria-label={e.done ? "Mark not done" : "Mark done"}
-                      onClick={() => onToggle(day.dateKey, e)}
-                      className="mt-0.5 flex size-3.5 shrink-0 border"
-                      style={{
-                        borderColor: e.color,
-                        backgroundColor: e.done ? e.color : "transparent",
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => onOpen(e)}
-                      title={[
-                        e.title,
-                        e.phaseName ? `board: ${e.phaseName}` : null,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                      className="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
+                    {weekday}
+                  </span>
+                  <span
+                    className={[
+                      "text-[17px] tabular-nums md:text-[15px]",
+                      isToday ? "text-accent" : "text-muted",
+                    ].join(" ")}
+                  >
+                    {d.getDate()}
+                  </span>
+                  <span className="mt-1 text-[11px] text-faint tabular-nums md:hidden">
+                    {all.length ? `${done}/${all.length}` : "—"}
+                  </span>
+                </button>
+
+                <div className="hidden px-2.5 py-1.5 text-[12px] text-faint tabular-nums md:block">
+                  {all.length ? `${done}/${all.length}` : "—"}
+                </div>
+
+                <div
+                  className={[
+                    "min-w-0 flex-1 space-y-1 px-2 py-2",
+                    "md:min-h-0 md:overflow-y-auto md:px-1.5 md:pb-1.5 md:pt-0",
+                  ].join(" ")}
+                >
+                  {all.length === 0 && (
+                    <p className="px-1 py-1 text-[12px] text-faint md:hidden">
+                      empty
+                    </p>
+                  )}
+                  {all.map((e) => (
+                    <div
+                      key={e.key}
+                      className={[
+                        "flex w-full items-start gap-1.5 border-l-2 px-2 py-1.5",
+                        e.done ? "opacity-40" : "bg-card/50",
+                      ].join(" ")}
+                      style={{ borderLeftColor: e.color }}
                     >
-                      <span
-                        className={[
-                          "truncate text-[13px] leading-6 text-ink",
-                          e.done ? "line-through text-muted" : "",
-                        ].join(" ")}
+                      <button
+                        type="button"
+                        aria-label={e.done ? "Mark not done" : "Mark done"}
+                        onClick={() => onToggle(day.dateKey, e)}
+                        className="mt-0.5 flex size-3.5 shrink-0 border"
+                        style={{
+                          borderColor: e.color,
+                          backgroundColor: e.done ? e.color : "transparent",
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => onOpen(e)}
+                        title={[
+                          e.title,
+                          e.phaseName ? `board: ${e.phaseName}` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                        className="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
                       >
-                        {e.time ? (
-                          <span className="mr-1 text-muted tabular-nums">
-                            {formatTime(e.time)}
-                          </span>
-                        ) : null}
-                        {e.title}
-                      </span>
-                      {e.phaseName && (
-                        <span className="truncate text-[10px] tracking-wide text-faint uppercase">
-                          {e.phaseName}
+                        <span
+                          className={[
+                            "text-[13px] leading-6 text-ink",
+                            /* allow wrap on mobile row layout */
+                            "md:truncate",
+                            e.done ? "line-through text-muted" : "",
+                          ].join(" ")}
+                        >
+                          {e.time ? (
+                            <span className="mr-1 text-muted tabular-nums">
+                              {formatTime(e.time)}
+                            </span>
+                          ) : null}
+                          {e.title}
                         </span>
-                      )}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </section>
-          );
-        })}
-      </div>
+                        {e.phaseName && (
+                          <span className="truncate text-[10px] tracking-wide text-faint uppercase">
+                            {e.phaseName}
+                          </span>
+                        )}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

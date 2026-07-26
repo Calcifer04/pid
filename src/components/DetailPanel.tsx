@@ -5,6 +5,7 @@ import {
   type ReactNode,
 } from "react";
 import { cadenceLabel } from "../lib/cadence";
+import { googleTemplateUrl, taskToEvent } from "../lib/calendar";
 import { formatTime } from "../lib/dates";
 import type { Phase, Sop, Task } from "../types";
 import {
@@ -204,6 +205,19 @@ export function DetailPanel({
                   className="w-full bg-transparent text-ink outline-none"
                 />
               </Field>
+              {task!.dueDate && !task!.done && (
+                <div className="col-span-2">
+                  <a
+                    href={googleTemplateUrl(taskToEvent(task!)!)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-block border border-line px-2.5 py-1.5 text-[13px] text-muted transition-colors hover:border-accent/40 hover:text-accent"
+                    title="Open Google Calendar create form with this task"
+                  >
+                    add to Google Calendar
+                  </a>
+                </div>
+              )}
             </>
           ) : (
             <>

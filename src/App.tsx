@@ -20,11 +20,25 @@ import { TodayView } from "./components/TodayView";
 import { WeekView } from "./components/WeekView";
 import { cadenceLabel } from "./lib/cadence";
 import {
+  downloadIcs,
+  toIcs,
+  upcomingEvents,
+} from "./lib/calendar";
+import {
   clearFocusRun,
   focusRef,
   pauseFocusRun,
   startFocusRun,
 } from "./lib/focus-run";
+import {
+  fetchGoogleCalendars,
+  fetchGoogleStatus,
+  selectGoogleCalendar,
+  setGoogleAutoSync,
+  setGoogleCalendarColor,
+  syncGoogleCalendar,
+  type GoogleStatus,
+} from "./lib/google-client";
 import {
   addDays,
   addMonths,
@@ -65,11 +79,14 @@ export default function App() {
   const [assistSource, setAssistSource] = useState<string>("none");
   const [grokOpen, setGrokOpen] = useState(false);
   const [detail, setDetail] = useState<DetailTarget | null>(null);
+  const [gcal, setGcal] = useState<GoogleStatus | null>(null);
+  const [gcalBusy, setGcalBusy] = useState(false);
   const dragRef = useRef<{ kind: "task" | "sop"; id: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const assistAbort = useRef<AbortController | null>(null);
   const skipPush = useRef(true);
   const deskBoot = useRef(false);
+  const gcalBoot = useRef(false);
 
   const realToday = toDateKey(now);
   const mondayKey = useMemo(() => startOfWeekMonday(dayKey), [dayKey]);
@@ -175,9 +192,28 @@ export default function App() {
           /* file API optional when offline; local cache still holds */
         }
       });
+      // Auto-push dated items into the chosen Google calendar.
+      if (gcal?.connected && gcal.calendarId && gcal.autoSync) {
+        void syncGoogleCalendar(21)
+          .then((r) => {
+            setGcal((s) =>
+              s
+                ? {
+                    ...s,
+                    lastSyncAt: Date.now(),
+                    lastSyncCount: r.total,
+                    lastError: null,
+                  }
+                : s,
+            );
+          })
+          .catch(() => {
+            /* status bar only on manual sync */
+          });
+      }
     }, 250);
     return () => window.clearTimeout(t);
-  }, [board, hydrated]);
+  }, [board, hydrated, gcal?.connected, gcal?.calendarId, gcal?.autoSync]);
   useEffect(() => {
     saveView(view);
   }, [view]);
@@ -195,7 +231,27 @@ export default function App() {
         setAssistOn(false);
         setAssistSource("none");
       });
+    void fetchGoogleStatus().then(setGcal);
   }, []);
+
+  // OAuth return: /?gcal=connected|error
+  useEffect(() => {
+    if (gcalBoot.current || !hydrated) return;
+    const params = new URLSearchParams(window.location.search);
+    const g = params.get("gcal");
+    if (!g) return;
+    gcalBoot.current = true;
+    window.history.replaceState({}, "", window.location.pathname);
+    void fetchGoogleStatus().then((s) => {
+      setGcal(s);
+      if (g === "connected") {
+        setAssistReply("google calendar connected — pick a calendar (gcal)");
+        setError(null);
+      } else {
+        setError(params.get("msg") || "google auth failed");
+      }
+    });
+  }, [hydrated]);
 
   const day = useMemo(
     () => buildDaySchedule(board, dayKey),
@@ -737,6 +793,150 @@ export default function App() {
     if (fileRef.current) fileRef.current.value = "";
   }
 
+  async function onGcalClick(e?: {
+    shiftKey?: boolean;
+    altKey?: boolean;
+    ctrlKey?: boolean;
+    metaKey?: boolean;
+  }) {
+    const shift = Boolean(e?.shiftKey);
+    const alt = Boolean(e?.altKey);
+    const ctrl = Boolean(e?.ctrlKey || e?.metaKey);
+
+    // Connected shortcuts first (before bare shift→ICS)
+    if (gcal?.configured && gcal.connected && gcal.calendarId) {
+      // Recolor sidebar
+      if (shift && alt) {
+        const pick = window.prompt(
+          "Calendar SIDEBAR color only (not task dots).\nGoogle always needs one — use gray so event/task colors stand out.\n\n#b8b8b8 neutral · #2ee6d6 cyan · #ffb454 amber · #030304 near-black",
+          "#b8b8b8",
+        );
+        if (pick == null || !pick.trim()) return;
+        const color = pick.trim().startsWith("#")
+          ? pick.trim()
+          : `#${pick.trim()}`;
+        try {
+          await setGoogleCalendarColor(color);
+          setAssistReply(`gcal · sidebar color ${color}`);
+          setError(null);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "color failed");
+        }
+        return;
+      }
+      // Toggle auto-sync
+      if (ctrl && !alt && !shift) {
+        try {
+          const next = !gcal.autoSync;
+          await setGoogleAutoSync(next);
+          setGcal({ ...gcal, autoSync: next });
+          setAssistReply(
+            next
+              ? "gcal auto-sync on — board saves push to Google"
+              : "gcal auto-sync off",
+          );
+          setError(null);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "auto-sync failed");
+        }
+        return;
+      }
+    }
+
+    // ICS dump (no OAuth or explicit shift without alt)
+    if ((shift && !alt) || !gcal?.configured) {
+      const events = upcomingEvents(board, 21);
+      downloadIcs("pid-upcoming.ics", toIcs(events));
+      setAssistReply(
+        events.length
+          ? `ics · ${events.length} events downloaded`
+          : "ics · nothing dated in the next 21 days",
+      );
+      setError(null);
+      return;
+    }
+
+    if (!gcal.connected) {
+      window.location.href = "/api/google/auth";
+      return;
+    }
+
+    // Pick / change calendar
+    if ((alt && !shift) || !gcal.calendarId) {
+      setGcalBusy(true);
+      try {
+        const list = await fetchGoogleCalendars();
+        if (!list.length) {
+          setError("no writable google calendars");
+          return;
+        }
+        const lines = list
+          .map(
+            (c, i) =>
+              `${i + 1}. ${c.summary}${c.primary ? " (primary)" : ""}`,
+          )
+          .join("\n");
+        const pick = window.prompt(
+          `Google calendar number (or paste id):\n\n${lines}`,
+          gcal.calendarId ||
+            String(list.findIndex((c) => c.primary) + 1 || 1),
+        );
+        if (pick == null || !pick.trim()) return;
+        const trimmed = pick.trim();
+        const asNum = Number(trimmed);
+        const chosen =
+          Number.isFinite(asNum) && asNum >= 1 && asNum <= list.length
+            ? list[asNum - 1]
+            : list.find((c) => c.id === trimmed);
+        if (!chosen) {
+          setError("unknown calendar");
+          return;
+        }
+        // Neutral sidebar so per-task event colors read clearly in Google
+        await selectGoogleCalendar(
+          chosen.id,
+          chosen.summary,
+          gcal.autoSync,
+          "#b8b8b8",
+        );
+        setGcal({
+          ...gcal,
+          calendarId: chosen.id,
+          calendarSummary: chosen.summary,
+        });
+        setAssistReply(
+          `gcal · using ${chosen.summary} (neutral sidebar — task colors on events; shift+alt+gcal to change sidebar)`,
+        );
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "calendar list failed");
+      } finally {
+        setGcalBusy(false);
+      }
+      return;
+    }
+
+    // Sync now
+    setGcalBusy(true);
+    try {
+      const r = await syncGoogleCalendar(21);
+      setGcal({
+        ...gcal,
+        lastSyncAt: Date.now(),
+        lastSyncCount: r.total,
+        lastError: null,
+      });
+      setAssistReply(
+        `gcal · ${r.total} events (${r.created} new, ${r.updated} updated) → ${gcal.calendarSummary || "calendar"}`,
+      );
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "sync failed");
+    } finally {
+      setGcalBusy(false);
+    }
+  }
+
   const views: { id: View; label: string; key: string }[] = [
     { id: "focus", label: "focus", key: "0" },
     { id: "today", label: "today", key: "1" },
@@ -767,12 +967,7 @@ export default function App() {
   const colTasks = "#ffb454";
 
   return (
-    <div
-      className={[
-        "pid-shell flex h-full flex-col bg-ground",
-        view === "focus" ? "pid-shell-zen" : "",
-      ].join(" ")}
-    >
+    <div className="pid-shell flex h-full flex-col bg-ground">
       <GrokPanel
         open={grokOpen}
         busy={assistBusy}
@@ -814,11 +1009,10 @@ export default function App() {
               className={[
                 "shrink-0 px-2.5 py-2.5 text-[13px] tracking-wide uppercase transition-colors sm:py-1.5",
                 active
-                  ? "bg-card-hi text-accent"
+                  ? view === "focus"
+                    ? "bg-card-hi text-ink"
+                    : "bg-card-hi text-accent"
                   : "text-faint hover:text-muted",
-                v.id === "focus" && board.focusRun?.startedAt != null
-                  ? "text-accent"
-                  : "",
               ].join(" ")}
             >
               <span className="mr-1.5 hidden text-[12px] text-faint tabular-nums sm:inline">
@@ -1085,6 +1279,27 @@ export default function App() {
                 .padStart(2, "0")}`,
             )}
           </span>
+          <button
+            type="button"
+            disabled={gcalBusy}
+            onClick={(ev) => void onGcalClick(ev)}
+            className={`${action} pid-footer-extra`}
+            title={
+              gcal?.connected && gcal.calendarId
+                ? `Sync → ${gcal.calendarSummary || gcal.calendarId}\nclick=sync · alt=pick · ctrl=auto · shift+alt=sidebar color · shift=ICS`
+                : gcal?.configured
+                  ? "Connect / set up Google Calendar"
+                  : "ICS export (set GOOGLE_CLIENT_* in .env.local for auto-sync)"
+            }
+          >
+            {gcalBusy
+              ? "gcal…"
+              : gcal?.connected && gcal.calendarId
+                ? gcal.autoSync
+                  ? "gcal·auto"
+                  : "gcal·sync"
+                : "gcal"}
+          </button>
           <button
             type="button"
             onClick={() => exportFile(board)}

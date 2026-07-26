@@ -19,10 +19,7 @@ type Props = {
   onPickFromToday: () => void;
 };
 
-/**
- * Zen focus surface — one active item, big timer, almost no chrome.
- * Timer state lives on board.focusRun so PC/laptop stay aligned.
- */
+/** Zen focus. Task color = left edge + thin rule (same language as day rows). */
 export function FocusView({
   board,
   onStart,
@@ -56,56 +53,49 @@ export function FocusView({
   const notes = (task?.notes ?? sop?.notes)?.trim();
   const elapsed = formatElapsed(focusElapsedMs(run, now));
   const hasTarget = Boolean(title && ref);
-
-  // Open candidates: incomplete tasks first, then anything focused-capable
   const openTasks = board.tasks.filter((t) => !t.done).slice(0, 8);
 
   return (
-    <div className="focus-zen flex h-full min-h-0 flex-1 flex-col items-center justify-center px-5 py-8 sm:px-10">
+    <div className="flex h-full min-h-0 flex-1 flex-col items-center justify-center px-5 py-8 sm:px-10">
       {!hasTarget && (
         <div className="flex w-full max-w-md flex-col items-center gap-8 text-center">
-          <p className="text-[12px] tracking-[0.28em] text-faint uppercase">
+          <p className="text-[12px] tracking-[0.14em] text-faint uppercase">
             focus
           </p>
-          <h1 className="text-[22px] leading-snug font-medium text-ink sm:text-[28px]">
-            nothing active
-          </h1>
-          <p className="max-w-sm text-[14px] leading-relaxed text-muted">
-            pick something to begin. timer starts with you — pause anytime,
-            resume later on any machine.
+          <h1 className="text-[18px] text-ink sm:text-[20px]">nothing active</h1>
+          <p className="max-w-sm text-[13px] text-muted">
+            pick something to begin. timer starts with you - pause anytime,
+            resume on any machine.
           </p>
 
           {openTasks.length > 0 ? (
-            <ul className="w-full space-y-1.5 text-left">
-              {openTasks.map((t) => (
-                <li key={t.id}>
-                  <button
-                    type="button"
-                    onClick={() => onStart("task", t.id)}
-                    className="group flex w-full items-center gap-3 border border-line bg-pane/60 px-3 py-3 text-left transition-colors hover:border-accent/35 hover:bg-card"
-                  >
-                    <span
-                      className="size-2 shrink-0 rounded-full"
-                      style={{
-                        backgroundColor: taskColor(t),
-                        boxShadow: `0 0 10px ${taskColor(t)}`,
-                      }}
-                    />
-                    <span className="min-w-0 flex-1 truncate text-[15px] text-ink">
-                      {t.title}
-                    </span>
-                    <span className="text-[11px] tracking-wide text-faint uppercase opacity-0 transition group-hover:opacity-100">
-                      start
-                    </span>
-                  </button>
-                </li>
-              ))}
+            <ul className="w-full space-y-1 text-left">
+              {openTasks.map((t) => {
+                const c = taskColor(t);
+                return (
+                  <li key={t.id}>
+                    <button
+                      type="button"
+                      onClick={() => onStart("task", t.id)}
+                      className="group flex w-full items-center gap-3 border border-line border-l-2 bg-pane py-3 pr-3 pl-3 text-left transition-colors hover:bg-card"
+                      style={{ borderLeftColor: c }}
+                    >
+                      <span className="min-w-0 flex-1 truncate text-[14px] text-ink">
+                        {t.title}
+                      </span>
+                      <span className="text-[11px] tracking-wide text-faint uppercase opacity-0 transition group-hover:opacity-100">
+                        start
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <button
               type="button"
               onClick={onPickFromToday}
-              className="border border-line px-4 py-2.5 text-[13px] tracking-wide text-muted uppercase transition-colors hover:border-accent/40 hover:text-accent"
+              className="border border-line px-4 py-2.5 text-[13px] tracking-wide text-muted uppercase transition-colors hover:text-ink"
             >
               open today
             </button>
@@ -115,43 +105,46 @@ export function FocusView({
 
       {hasTarget && ref && (
         <div className="flex w-full max-w-lg flex-col items-center gap-10 text-center">
-          <div className="flex flex-col items-center gap-4">
-            <span
-              className="size-2.5 rounded-full"
-              style={{
-                backgroundColor: color,
-                boxShadow: `0 0 18px ${color}`,
-              }}
-            />
+          <div
+            className="w-full border border-line border-l-2 bg-pane px-5 py-6 text-left"
+            style={{ borderLeftColor: color }}
+          >
+            <p className="mb-3 text-[12px] tracking-[0.14em] text-faint uppercase">
+              focus
+            </p>
             <button
               type="button"
               onClick={() => onOpenDetail(ref.kind, ref.id)}
-              className="max-w-full px-2 text-[22px] leading-snug font-medium text-balance text-ink transition-colors hover:text-accent sm:text-[30px]"
+              className="w-full text-left text-[20px] leading-snug text-ink transition-colors hover:text-muted sm:text-[24px]"
             >
               {title}
             </button>
             {notes && (
-              <p className="line-clamp-3 max-w-md text-[13px] leading-relaxed text-faint">
-                {notes}
-              </p>
+              <p className="mt-3 line-clamp-3 text-[13px] text-faint">{notes}</p>
             )}
           </div>
 
           <div
-            className="focus-timer tabular-nums tracking-tight text-ink"
+            className="focus-timer text-ink"
             aria-live="polite"
             aria-label={`elapsed ${elapsed}`}
           >
             {elapsed}
           </div>
 
+          <div
+            className="h-px w-16"
+            style={{ backgroundColor: color }}
+            aria-hidden
+          />
+
           <div className="flex flex-wrap items-center justify-center gap-2">
             {running ? (
-              <ZenBtn primary onClick={onPause}>
+              <ZenBtn primary onClick={onPause} color={color}>
                 pause
               </ZenBtn>
             ) : (
-              <ZenBtn primary onClick={onResume}>
+              <ZenBtn primary onClick={onResume} color={color}>
                 {run && (run.accumulatedMs ?? 0) > 0 ? "resume" : "start"}
               </ZenBtn>
             )}
@@ -161,8 +154,10 @@ export function FocusView({
             </ZenBtn>
           </div>
 
-          <p className="text-[11px] tracking-[0.18em] text-faint uppercase">
-            {running ? "running" : "paused"} · synced with board
+          <p className="text-[11px] tracking-[0.14em] text-faint uppercase">
+            {running ? "running" : "paused"}
+            <span className="mx-2 opacity-40">·</span>
+            space pause
           </p>
         </div>
       )}
@@ -175,24 +170,27 @@ function ZenBtn({
   onClick,
   primary,
   muted,
+  color,
 }: {
   children: string;
   onClick: () => void;
   primary?: boolean;
   muted?: boolean;
+  color?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={[
-        "min-w-[5.5rem] px-4 py-2.5 text-[13px] tracking-[0.16em] uppercase transition-colors",
+        "min-w-[5.5rem] px-4 py-2.5 text-[13px] tracking-[0.14em] uppercase transition-colors",
         primary
-          ? "border border-accent/50 bg-accent/10 text-accent hover:bg-accent/15"
+          ? "border text-ink hover:bg-card"
           : muted
             ? "border border-transparent text-faint hover:text-muted"
-            : "border border-line text-muted hover:border-accent/35 hover:text-accent",
+            : "border border-line text-muted hover:text-ink",
       ].join(" ")}
+      style={primary ? { borderColor: color || "var(--color-line)" } : undefined}
     >
       {children}
     </button>

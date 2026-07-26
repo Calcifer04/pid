@@ -171,34 +171,15 @@
   padding-right: env(safe-area-inset-right, 0px);
 }
 
-/* Zen focus view: quieter chrome */
-.pid-shell-zen .pid-nav {
-  border-color: color-mix(in srgb, var(--color-line) 55%, transparent);
-  background: transparent;
-}
-
-.pid-shell-zen .pid-footer {
-  border-color: color-mix(in srgb, var(--color-line) 55%, transparent);
-  background: color-mix(in srgb, var(--color-pane) 70%, transparent);
-}
-
+/* Focus timer — mono, large, no accent glow */
 .focus-timer {
-  font-size: clamp(3.25rem, 14vw, 5.5rem);
-  font-weight: 500;
-  letter-spacing: 0.04em;
+  font-family: inherit;
+  font-size: clamp(3rem, 12vw, 4.5rem);
+  font-weight: 400;
+  letter-spacing: 0.08em;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 0 40px color-mix(in srgb, var(--color-accent) 22%, transparent);
-}
-
-.focus-zen {
-  background:
-    radial-gradient(
-      ellipse 80% 55% at 50% 42%,
-      color-mix(in srgb, var(--color-accent) 6%, transparent),
-      transparent 70%
-    ),
-    var(--color-ground);
+  color: var(--color-ink);
 }
 
 /* Detail dimmer — phones + thin windows */
@@ -297,12 +278,7 @@
   }
 }
 
-/* Very narrow */
-@media (max-width: 420px) {
-  .focus-timer {
-    font-size: clamp(2.75rem, 18vw, 4rem);
-  }
-}
+
 
 @media (prefers-reduced-motion: reduce) {
   html[data-accent="rgb"],
