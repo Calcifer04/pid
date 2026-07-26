@@ -38,3 +38,4 @@ public/piD.ico
 
 # machine-local Mac paths baked by install:app
 scripts/.mac-paths.sh
+scripts/.mac-dock-run.sh
