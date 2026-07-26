@@ -187,40 +187,8 @@
   display: none;
 }
 
-/* Floating assist — phones have no `g` key */
-.pid-fab {
-  position: fixed;
-  right: max(1rem, env(safe-area-inset-right, 0px));
-  bottom: max(4.5rem, calc(env(safe-area-inset-bottom, 0px) + 4.25rem));
-  z-index: 40;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  width: 3rem;
-  height: 3rem;
-  border-radius: 999px;
-  color: var(--color-ground);
-  background: var(--color-accent);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--color-accent) 40%, transparent),
-    0 8px 28px color-mix(in srgb, #000 55%, transparent),
-    0 0 24px -4px var(--color-accent);
-  font-weight: 700;
-  font-size: 1.05rem;
-  line-height: 1;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.pid-fab:active {
-  transform: scale(0.96);
-}
-
 /* Thin window + phone */
 @media (max-width: 768px) {
-  .pid-fab {
-    display: flex;
-  }
-
   body {
     font-size: 14px;
   }
@@ -264,18 +232,7 @@
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
-  /* Horizontal boards: snap columns, roomier touch */
-  .pid-board-scroll,
-  .pid-sop-scroll {
-    scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 0.5rem;
-  }
-
-  .pid-board-scroll > *,
-  .pid-sop-scroll > * {
-    scroll-snap-align: start;
-  }
+  /* Board/SOP are vertical on phone now — no horizontal snap needed */
 }
 
 

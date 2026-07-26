@@ -1,5 +1,5 @@
-# Start piD (if needed) and open it as an app window.
-# Windows - double-click piD.vbs, or: npm run open
+# Start piD (if needed) and open it as a dedicated app window (own taskbar icon).
+# Windows - double-click piD.vbs, Desktop shortcut, or: npm run open
 $ErrorActionPreference = "Stop"
 
 $Root = Resolve-Path (Join-Path $PSScriptRoot "..")
@@ -7,6 +7,8 @@ $Port = if ($env:PID_PORT) { [int]$env:PID_PORT } else { 4000 }
 $Url = "http://127.0.0.1:$Port/"
 $OutLog = Join-Path $env:TEMP "pid-serve.out.log"
 $ErrLog = Join-Path $env:TEMP "pid-serve.err.log"
+$ProfileDir = Join-Path $env:LOCALAPPDATA "piD\chromium-profile"
+$IconIco = Join-Path $Root "public\icon.ico"
 
 function Test-ServerUp {
   try {
@@ -17,6 +19,26 @@ function Test-ServerUp {
   }
 }
 
+function Test-DistStale {
+  if (-not (Test-Path (Join-Path $Root "dist\index.html"))) { return $true }
+  $distTime = (Get-Item (Join-Path $Root "dist\index.html")).LastWriteTimeUtc
+  $watch = @("src", "index.html", "package.json", "vite.config.ts", "public")
+  foreach ($rel in $watch) {
+    $p = Join-Path $Root $rel
+    if (-not (Test-Path $p)) { continue }
+    $item = Get-Item $p
+    if ($item.PSIsContainer) {
+      $newer = Get-ChildItem -Path $p -Recurse -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.LastWriteTimeUtc -gt $distTime } |
+        Select-Object -First 1
+      if ($newer) { return $true }
+    } elseif ($item.LastWriteTimeUtc -gt $distTime) {
+      return $true
+    }
+  }
+  return $false
+}
+
 function Ensure-Built {
   Push-Location $Root
   try {
@@ -25,7 +47,7 @@ function Ensure-Built {
       npm install
       if ($LASTEXITCODE -ne 0) { throw "npm install failed" }
     }
-    if (-not (Test-Path "dist/index.html")) {
+    if (Test-DistStale) {
       Write-Host "piD: building..."
       npm run build
       if ($LASTEXITCODE -ne 0) { throw "npm run build failed" }
@@ -54,7 +76,7 @@ function Start-PidServer {
   throw "piD server failed to start (pid $($proc.Id)) - see $ErrLog"
 }
 
-function Open-AppWindow {
+function Find-Chromium {
   $candidates = @(
     (Join-Path ${env:ProgramFiles(x86)} "Microsoft\Edge\Application\msedge.exe"),
     (Join-Path $env:ProgramFiles "Microsoft\Edge\Application\msedge.exe"),
@@ -66,16 +88,32 @@ function Open-AppWindow {
     (Join-Path $env:LOCALAPPDATA "BraveSoftware\Brave-Browser\Application\brave.exe"),
     (Join-Path $env:LOCALAPPDATA "Chromium\Application\chrome.exe")
   )
-
   foreach ($exe in $candidates) {
-    if ($exe -and (Test-Path $exe)) {
-      Start-Process -FilePath $exe -ArgumentList @("--app=$Url", "--new-window")
-      return
-    }
+    if ($exe -and (Test-Path $exe)) { return $exe }
+  }
+  return $null
+}
+
+function Open-AppWindow {
+  $exe = Find-Chromium
+  if (-not $exe) {
+    Start-Process $Url
+    return
   }
 
-  # Fallback: default browser (has chrome UI)
-  Start-Process $Url
+  New-Item -ItemType Directory -Force -Path $ProfileDir | Out-Null
+
+  # Dedicated profile + app mode = separate taskbar group (not mixed with normal Edge tabs).
+  # Chromium picks the site favicon/manifest icon for the window when PNGs are present.
+  $args = @(
+    "--user-data-dir=$ProfileDir",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--class=piD",
+    "--app=$Url"
+  )
+
+  Start-Process -FilePath $exe -ArgumentList $args
 }
 
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) {

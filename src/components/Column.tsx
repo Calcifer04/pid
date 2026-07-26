@@ -19,6 +19,8 @@ type Props = {
   onDragStart: (kind: "task" | "sop", id: string) => void;
   onDropInPhase: (phaseId: string) => void;
   onDropBefore: (kind: "task" | "sop", targetId: string) => void;
+  /** Full-width list mode for mobile (no fixed column min-width). */
+  mobileFull?: boolean;
 };
 
 export function Column({
@@ -35,6 +37,7 @@ export function Column({
   onDragStart,
   onDropInPhase,
   onDropBefore,
+  mobileFull = false,
 }: Props) {
   const [renaming, setRenaming] = useState(false);
   const [nameDraft, setNameDraft] = useState(phase.name);
@@ -68,13 +71,25 @@ export function Column({
         onDropInPhase(phase.id);
       }}
       className={[
-        "group/col flex min-h-0 min-w-[min(85vw,280px)] flex-1 flex-col border bg-pane transition-colors sm:min-w-[260px]",
+        "group/col flex min-h-0 flex-1 flex-col border bg-pane transition-colors",
+        mobileFull
+          ? "min-w-0 w-full border-0 bg-transparent"
+          : "min-w-[min(85vw,280px)] sm:min-w-[260px]",
         over
           ? "border-accent shadow-[0_0_0_1px_var(--color-accent)]"
-          : "border-line",
+          : mobileFull
+            ? ""
+            : "border-line",
       ].join(" ")}
     >
-      <header className="flex h-11 shrink-0 items-center gap-2.5 border-b border-line px-3">
+      <header
+        className={[
+          "flex shrink-0 items-center gap-2.5",
+          mobileFull
+            ? "h-10 px-1 pb-2"
+            : "h-11 border-b border-line px-3",
+        ].join(" ")}
+      >
         <span
           aria-hidden
           className="size-2 shrink-0 rounded-full"
@@ -123,7 +138,14 @@ export function Column({
         </button>
       </header>
 
-      <div className="flex min-h-[200px] flex-1 flex-col gap-1.5 overflow-y-auto p-2.5">
+      <div
+        className={[
+          "flex flex-1 flex-col gap-1.5",
+          mobileFull
+            ? "min-h-0 overflow-visible p-0"
+            : "min-h-[200px] overflow-y-auto p-2.5",
+        ].join(" ")}
+      >
         {cards.map((card) =>
           card.kind === "task" ? (
             <TaskRow

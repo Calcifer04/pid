@@ -982,22 +982,6 @@ export default function App() {
         }}
       />
 
-      {/* Phone assist — desktop still uses `g` */}
-      {!grokOpen && (
-        <button
-          type="button"
-          className="pid-fab"
-          aria-label="Open πD assist"
-          onClick={() => {
-            setError(null);
-            setAssistReply(null);
-            setGrokOpen(true);
-          }}
-        >
-          <span className="brand-pi">π</span>
-        </button>
-      )}
-
       <nav className="pid-nav flex items-center gap-0.5 overflow-x-auto border-b border-line px-2 py-1.5 sm:gap-1 sm:px-4 sm:py-2">
         {views.map((v) => {
           const active = view === v.id;
@@ -1283,7 +1267,7 @@ export default function App() {
             type="button"
             disabled={gcalBusy}
             onClick={(ev) => void onGcalClick(ev)}
-            className={`${action} pid-footer-extra`}
+            className={action}
             title={
               gcal?.connected && gcal.calendarId
                 ? `Sync → ${gcal.calendarSummary || gcal.calendarId}\nclick=sync · alt=pick · ctrl=auto · shift+alt=sidebar color · shift=ICS`

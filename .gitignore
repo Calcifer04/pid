@@ -15,9 +15,18 @@ data/*
 .stfolder/
 .stversions/
 
+# Windows launcher binary (built by scripts/install-windows-shortcut.ps1)
+piD.exe
+
 # OS / editor
 .DS_Store
 Thumbs.db
 *.log
 .vscode/
 .idea/
+
+# generated icon build artifacts
+public/pid-icon-*.ico
+public/_icon-preview.png
+public/.icon-hash
+public/piD.ico

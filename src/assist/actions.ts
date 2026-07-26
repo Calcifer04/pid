@@ -95,7 +95,6 @@ export function applyActions(board: Board, actions: Action[]): ApplyResult {
     theme: board.theme ? { ...board.theme } : undefined,
     focusId: board.focusId,
     focusRun: board.focusRun ? { ...board.focusRun } : undefined,
-    alarms: board.alarms?.map((a) => ({ ...a })),
   };
   const applied: Action[] = [];
   const rejected: ApplyResult["rejected"] = [];

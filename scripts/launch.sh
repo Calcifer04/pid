@@ -46,9 +46,13 @@ start_server() {
   die "server failed to start — see $ERR_LOG"
 }
 
-# Prefer a Chromium shell in --app mode (no tabs/URL bar). Fall back to default browser.
+# Prefer a Chromium shell in --app mode (no tabs/URL bar) with a dedicated profile
+# so the window is its own Dock/taskbar app, not mixed with normal browser windows.
 open_app_window() {
-  local app
+  local app profile
+  profile="${PID_CHROMIUM_PROFILE:-$HOME/.config/pid-chromium}"
+  mkdir -p "$profile" 2>/dev/null || true
+
   if [[ "$(uname -s)" == "Darwin" ]]; then
     for app in \
       "Google Chrome" \
@@ -59,11 +63,14 @@ open_app_window() {
       "Dia"
     do
       if [[ -d "/Applications/${app}.app" || -d "$HOME/Applications/${app}.app" ]]; then
-        open -na "$app" --args --app="$URL" --new-window
+        open -na "$app" --args \
+          --user-data-dir="$profile" \
+          --no-first-run \
+          --no-default-browser-check \
+          --app="$URL"
         return 0
       fi
     done
-    # Safari / default — still one click, just with browser chrome
     open "$URL"
     return 0
   fi
@@ -71,7 +78,11 @@ open_app_window() {
   # Linux
   for app in google-chrome google-chrome-stable chromium chromium-browser microsoft-edge brave-browser; do
     if command -v "$app" >/dev/null 2>&1; then
-      nohup "$app" --app="$URL" >/dev/null 2>&1 &
+      nohup "$app" \
+        --user-data-dir="$profile" \
+        --no-first-run \
+        --class=piD \
+        --app="$URL" >/dev/null 2>&1 &
       disown $! 2>/dev/null || true
       return 0
     fi

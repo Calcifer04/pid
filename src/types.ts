@@ -81,11 +81,8 @@ export type Theme = {
  * shares the same clock. Wall-clock based: `startedAt` is an epoch ms;
  * elapsed = accumulatedMs + (now - startedAt) while running.
  *
- * Future notifications / alarms should key off the same board file:
- *   - soft pulse: focusRun running + idle threshold
- *   - SOP due / task dueTime → scheduled Alarm entries (separate list)
- *   - delivery: Web Notification API in the browser, optional OS bridge later
- * Do not put toast delivery state on the board — only intent (when/what).
+ * Reminders / notifications are NOT local — Google Calendar owns delivery.
+ * Dated tasks + due SOPs sync as events with popup reminders via gcal.
  */
 export type FocusRun = {
   /** Same shape as focusId: `task:<uuid>` | `sop:<uuid>` */
@@ -94,21 +91,6 @@ export type FocusRun = {
   startedAt: number | null;
   /** Prior segments total (ms). */
   accumulatedMs: number;
-};
-
-/**
- * Planned local reminder (not yet delivered). Future work.
- * Kept here so the schema is ready without another board migration.
- */
-export type Alarm = {
-  id: string;
-  /** epoch ms */
-  at: number;
-  title: string;
-  /** optional link back to task:/sop: */
-  ref?: string;
-  /** once | daily — expand later */
-  kind?: "once";
 };
 
 export type Board = {
@@ -131,13 +113,11 @@ export type Board = {
   theme?: Theme;
   /**
    * Active focus target (`task:<id>` or `sop:<id>`).
-   * Desk widget + today pulse prefer this when set and still open.
+   * Today pulse / focus view prefer this when set and still open.
    */
   focusId?: string;
   /** Zen focus timer (synced). */
   focusRun?: FocusRun;
-  /** Future: due reminders / alarms (synced intent only). */
-  alarms?: Alarm[];
 };
 
 /**

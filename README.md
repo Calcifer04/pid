@@ -6,33 +6,40 @@ Core app is a local web UI. Board lives in one JSON file so machines stay in syn
 
 ---
 
-## Quick start
+## Install (once)
 
-Node **20+** once. Then open it like an app:
+Need **Node 20+** ([nodejs.org](https://nodejs.org)).
 
 ```bash
-npm install
-npm run build
-npm run open          # starts server + app window (Mac / Windows / Linux)
+git clone https://github.com/Calcifer04/pid.git
+cd pid
+npm run setup          # install + build + Desktop/Dock app
+npm run open           # launch
 ```
 
-### Double-click
+That’s it. After setup:
 
-| OS | Do this |
-|----|---------|
-| **Mac** | Double-click `πD.command` · or `npm run install:app` → `~/Applications/πD.app` → keep in Dock |
-| **Windows** | Double-click `πD.vbs` · or `npm run install:app` → Desktop + Start Menu shortcut |
+| OS | Everyday open |
+|----|----------------|
+| **Mac** | `~/Applications/πD.app` → Keep in Dock |
+| **Windows** | Desktop / Start Menu **piD** |
+| **Either** | `npm run open` or double-click `πD.command` / `πD.vbs` |
 
-`npm run open` / the shortcuts:
-1. start the local server if it isn’t up
-2. open Chrome / Edge / Brave in **app mode** (no tabs, no URL bar)
+First launch starts the local server and opens an app window (no browser tabs). Later opens reuse the same server.
 
-Server keeps running in the background so closing the window doesn’t lose the board. Re-open anytime — same one-click.
+### Board across Mac ↔ Windows
+
+Code: git. **Live board + Google tokens:** [Syncthing](./SYNCTHING.md) (or copy `data/` + `.env.local`).
+
+```bash
+# Mac after Syncthing lands the folder:
+cd ~/Sync/pid && npm run setup && npm run open
+```
 
 | OS | Dev | Server only |
 |----|-----|-------------|
 | Mac / Linux | `./scripts/dev.sh` | `./scripts/start.sh` |
-| Windows | `npm run dev` | `npm start` or `npm run start:bg` |
+| Windows | `npm run dev` | `npm start` |
 
 ---
 
@@ -123,9 +130,14 @@ npm run open
 
 ---
 
-## Google Calendar
+## Google Calendar (notifications)
 
-Reminders ride on Google. Two modes:
+**All reminders / popups are Google’s job** (phone, watch, desktop). πD does not run a local notification stack — put a due date (± time) on a task or SOP, sync, and Google fires the popup.
+
+- Timed items → popup **15 min** before
+- All-day items → popup **~15:00 the day before** (540 min before midnight)
+
+Two sync modes:
 
 ### A — Auto-sync (recommended)
 

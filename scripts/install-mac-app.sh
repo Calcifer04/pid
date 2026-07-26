@@ -9,21 +9,52 @@ MACOS_DIR="$APP_DIR/Contents/MacOS"
 RES_DIR="$APP_DIR/Contents/Resources"
 BIN="$MACOS_DIR/πD"
 
-chmod +x "$ROOT/scripts/launch.sh" "$ROOT/πD.command" 2>/dev/null || true
-
-mkdir -p "$MACOS_DIR" "$RES_DIR"
+chmod +x "$ROOT/scripts/launch.sh" "$ROOT/scripts/"*.sh "$ROOT/πD.command" 2>/dev/null || true
+mkdir -p "$MACOS_DIR" "$RES_DIR" "$HOME/Applications"
 
 # Launcher baked with absolute path to this checkout
 cat >"$BIN" <<EOF
 #!/bin/bash
 export PID_PORT="\${PID_PORT:-4000}"
+cd "$ROOT" || exit 1
+# first run: deps/build if missing
+if [[ ! -d "$ROOT/node_modules" || ! -f "$ROOT/dist/index.html" ]]; then
+  osascript -e 'display notification "Installing πD…" with title "πD"' 2>/dev/null || true
+  (cd "$ROOT" && npm install && npm run build) || {
+    osascript -e 'display alert "πD setup failed" message "Open Terminal in the project and run: npm run setup"' 2>/dev/null || true
+    exit 1
+  }
+fi
 exec "$ROOT/scripts/launch.sh"
 EOF
 chmod +x "$BIN"
 
-# Minimal icon (uses SVG via png if sips/qlmanage available later — .icns optional)
-if [[ -f "$ROOT/public/icon.svg" ]]; then
-  cp "$ROOT/public/icon.svg" "$RES_DIR/icon.svg" 2>/dev/null || true
+# Build .icns from PNG master when possible (real Dock icon)
+ICNS="$RES_DIR/AppIcon.icns"
+PNG_SRC=""
+for c in \
+  "$ROOT/public/icon-1024.png" \
+  "$ROOT/public/icon-512.png" \
+  "$ROOT/public/apple-touch-icon.png" \
+  "$ROOT/public/icon-256.png"
+do
+  if [[ -f "$c" ]]; then PNG_SRC="$c"; break; fi
+done
+
+if [[ -n "$PNG_SRC" ]] && command -v sips >/dev/null 2>&1 && command -v iconutil >/dev/null 2>&1; then
+  ICONSET="$(mktemp -d)/AppIcon.iconset"
+  mkdir -p "$ICONSET"
+  for sz in 16 32 128 256 512; do
+    sips -z "$sz" "$sz" "$PNG_SRC" --out "$ICONSET/icon_${sz}x${sz}.png" >/dev/null
+    sips -z $((sz*2)) $((sz*2)) "$PNG_SRC" --out "$ICONSET/icon_${sz}x${sz}@2x.png" >/dev/null
+  done
+  iconutil -c icns "$ICONSET" -o "$ICNS" 2>/dev/null || true
+  rm -rf "$(dirname "$ICONSET")"
+fi
+
+# Fallback copy PNG for tooling
+if [[ -n "$PNG_SRC" ]]; then
+  cp "$PNG_SRC" "$RES_DIR/icon.png" 2>/dev/null || true
 fi
 
 cat >"$APP_DIR/Contents/Info.plist" <<PLIST
@@ -48,7 +79,9 @@ cat >"$APP_DIR/Contents/Info.plist" <<PLIST
   <key>CFBundleShortVersionString</key>
   <string>0.1.0</string>
   <key>CFBundleVersion</key>
-  <string>1</string>
+  <string>2</string>
+  <key>CFBundleIconFile</key>
+  <string>AppIcon</string>
   <key>LSMinimumSystemVersion</key>
   <string>12.0</string>
   <key>LSUIElement</key>
@@ -59,15 +92,13 @@ cat >"$APP_DIR/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
-# Clear quarantine + refresh Launch Services so Dock picks it up
 xattr -cr "$APP_DIR" 2>/dev/null || true
-if command -v lsregister >/dev/null 2>&1; then
-  lsregister -f "$APP_DIR" 2>/dev/null || true
-elif [[ -x /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister ]]; then
-  /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP_DIR" 2>/dev/null || true
+LSREG="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+if [[ -x "$LSREG" ]]; then
+  "$LSREG" -f "$APP_DIR" 2>/dev/null || true
 fi
 
 echo "installed → $APP_DIR"
-echo "  open once:  open \"$APP_DIR\""
-echo "  then:       right-click Dock icon → Options → Keep in Dock"
-echo "  project:    $ROOT"
+echo "  open:   open \"$APP_DIR\""
+echo "  Dock:   right-click → Options → Keep in Dock"
+echo "  project:$ROOT"

@@ -1,4 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
-  <rect width="128" height="128" rx="28" fill="#030304"/>
-  <text x="64" y="84" text-anchor="middle" font-family="ui-monospace, monospace" font-size="64" font-weight="700" fill="#5af78e">πD</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#121214"/>
+      <stop offset="100%" stop-color="#08080A"/>
+    </linearGradient>
+    <clipPath id="squircle">
+      <rect x="0" y="0" width="1024" height="1024" rx="228" ry="228"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#squircle)">
+    <rect width="1024" height="1024" fill="url(#bg)"/>
+    <text x="512" y="590" text-anchor="middle"
+          font-family="Segoe UI, system-ui, -apple-system, sans-serif"
+          font-size="410" font-weight="700" fill="#5AF78E">πD</text>
+  </g>
 </svg>

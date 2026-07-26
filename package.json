@@ -5,6 +5,7 @@
   "description": "piD local board (today/week/SOPs/calendar). Lightweight local web app.",
   "type": "module",
   "scripts": {
+    "setup": "node ./scripts/setup.js",
     "dev": "vite",
     "dev:bg": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-bg.ps1",
     "dev:unix": "bash ./scripts/dev.sh",

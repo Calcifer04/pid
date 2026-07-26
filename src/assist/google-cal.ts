@@ -247,7 +247,14 @@ async function gfetch(
 }
 
 function toGoogleEvent(ev: CalEvent): Record<string, unknown> {
-  const remind = ev.remindMin ?? 15;
+  // Notifications live in Google (phone/watch/desktop) — not in πD.
+  // Multiple popups: primary lead time + at-event (0). Secondary calendars
+  // on phones often need explicit overrides (defaults are empty on piD cal).
+  const remind = ev.remindMin ?? (ev.time ? 15 : 540);
+  const overrides: { method: string; minutes: number }[] = [
+    { method: "popup", minutes: remind },
+  ];
+  if (remind !== 0) overrides.push({ method: "popup", minutes: 0 });
   const base: Record<string, unknown> = {
     summary: ev.title,
     description: ev.description ?? "πD",
@@ -255,7 +262,7 @@ function toGoogleEvent(ev: CalEvent): Record<string, unknown> {
     colorId: googleColorId(ev.color),
     reminders: {
       useDefault: false,
-      overrides: [{ method: "popup", minutes: remind }],
+      overrides,
     },
     source: {
       title: "πD",

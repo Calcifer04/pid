@@ -1,6 +1,8 @@
 /**
- * Board → calendar events (ICS + Google Calendar template links).
- * Delivery of reminders is Google's job once imported / added.
+ * Board → calendar events (ICS + Google Calendar API).
+ *
+ * Notifications = Google Calendar popups only (phone/watch/desktop).
+ * πD does not run a local notification stack — set a due date/time, sync gcal.
  */
 import { addDays, parseDateKey, toDateKey } from "./dates";
 import { buildDaySchedule } from "./schedule";
@@ -17,7 +19,10 @@ export type CalEvent = {
   /** minutes; default 60 for timed, all-day = 1 day */
   durationMin?: number;
   description?: string;
-  /** minutes before start for VALARM / Google popup */
+  /**
+   * Minutes before start for Google popup / ICS VALARM.
+   * Timed default 15. All-day default 540 (9h before midnight ≈ 15:00 day before).
+   */
   remindMin?: number;
   /** πD task/sop hex — mapped to nearest Google event colorId on sync */
   color?: string;
@@ -98,8 +103,18 @@ export function googleColorId(hex: string | undefined): string {
   return best;
 }
 
-const DEFAULT_REMIND_MIN = 15;
+/** Timed events: popup 15 min before. */
+export const REMIND_TIMED_MIN = 15;
+/**
+ * All-day events: Google measures minutes before midnight of the event day.
+ * 540 → ~15:00 the day before (usable heads-up without a 00:00 fire).
+ */
+export const REMIND_ALLDAY_MIN = 540;
 const DEFAULT_DURATION_MIN = 60;
+
+export function defaultRemindMin(time?: string): number {
+  return time ? REMIND_TIMED_MIN : REMIND_ALLDAY_MIN;
+}
 
 export function taskToEvent(task: Task): CalEvent | null {
   if (!task.dueDate || task.done) return null;
@@ -110,7 +125,7 @@ export function taskToEvent(task: Task): CalEvent | null {
     time: task.dueTime,
     durationMin: DEFAULT_DURATION_MIN,
     description: task.notes?.trim() || undefined,
-    remindMin: DEFAULT_REMIND_MIN,
+    remindMin: defaultRemindMin(task.dueTime),
     color: taskColor(task),
   };
 }
@@ -165,7 +180,7 @@ export function upcomingEvents(board: Board, days = 21): CalEvent[] {
           e.kind === "sop"
             ? `πD SOP · ${e.title}`
             : task?.notes?.trim() || undefined,
-        remindMin: DEFAULT_REMIND_MIN,
+        remindMin: defaultRemindMin(e.time),
         color: task ? taskColor(task) : sop?.color || e.color,
       });
     }
@@ -242,7 +257,7 @@ export function toIcs(events: CalEvent[], calName = "πD"): string {
     const allDay = !ev.time;
     const dtStart = icsLocal(ev.date, ev.time);
     const dtEnd = icsEnd(ev);
-    const remind = ev.remindMin ?? DEFAULT_REMIND_MIN;
+    const remind = ev.remindMin ?? defaultRemindMin(ev.time);
 
     lines.push("BEGIN:VEVENT");
     lines.push(`UID:${ev.uid}`);
