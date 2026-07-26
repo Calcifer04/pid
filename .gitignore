@@ -35,3 +35,6 @@ public/pid-icon-*.ico
 public/_icon-preview.png
 public/.icon-hash
 public/piD.ico
+
+# machine-local Mac paths baked by install:app
+scripts/.mac-paths.sh
