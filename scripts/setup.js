@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 /**
- * One-shot install: deps → build → desktop/Dock app.
+ * One-shot install: deps → build → server → Tauri app (if Rust) → shortcuts.
  *   npm run setup
- * Then: npm run open   (or double-click Desktop / Dock πD)
  */
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -18,6 +17,10 @@ function run(cmd, args, opts = {}) {
       cwd: root,
       stdio: "inherit",
       shell: win,
+      env: {
+        ...process.env,
+        PATH: `${process.env.USERPROFILE || process.env.HOME || ""}\\.cargo\\bin${win ? ";" : ":"}${process.env.PATH || ""}`,
+      },
       ...opts,
     });
     child.on("exit", (code) => {
@@ -25,6 +28,18 @@ function run(cmd, args, opts = {}) {
       else reject(new Error(`${cmd} ${args.join(" ")} exited ${code}`));
     });
     child.on("error", reject);
+  });
+}
+
+function hasCmd(cmd) {
+  return new Promise((resolve) => {
+    const c = spawn(cmd, ["--version"], {
+      stdio: "ignore",
+      shell: win,
+      env: process.env,
+    });
+    c.on("exit", (code) => resolve(code === 0));
+    c.on("error", () => resolve(false));
   });
 }
 
@@ -36,27 +51,46 @@ async function main() {
     throw new Error("run from the piD project folder");
   }
 
-  console.log("\n[1/3] npm install…");
-  await run(win ? "npm.cmd" : "npm", ["install"]);
+  const npm = win ? "npm.cmd" : "npm";
 
-  console.log("\n[2/3] build…");
-  await run(win ? "npm.cmd" : "npm", ["run", "build"]);
+  console.log("\n[1/4] npm install…");
+  await run(npm, ["install"]);
 
-  console.log("\n[3/3] install app shortcut…");
-  await run(win ? "npm.cmd" : "npm", ["run", "install:app"]);
+  console.log("\n[2/4] build UI + server…");
+  await run(npm, ["run", "build"]);
+  await run(npm, ["run", "build:server"]);
+
+  let tauriOk = false;
+  const rustc = await hasCmd("rustc");
+  const cargo = await hasCmd("cargo");
+  if (rustc && cargo && existsSync(join(root, "src-tauri", "Cargo.toml"))) {
+    console.log("\n[3/4] build native app (Tauri)…");
+    try {
+      await run(npm, ["run", "tauri", "build"]);
+      tauriOk = true;
+    } catch (e) {
+      console.warn(
+        "Tauri build skipped/failed — browser app mode still works.\n",
+        e.message || e,
+      );
+    }
+  } else {
+    console.log(
+      "\n[3/4] skip Tauri (install Rust from https://rustup.rs for native .exe/.app)",
+    );
+  }
+
+  console.log("\n[4/4] install shortcuts…");
+  await run(npm, ["run", "install:app"]);
 
   console.log(`
 Done.
 
 Open:
-  npm run open
+  npm run open${tauriOk ? "\n  or the native piD app from Desktop / Start Menu / Applications" : ""}
 
-Or double-click:
-  Windows → Desktop "piD"
-  Mac     → ~/Applications/πD.app  (Keep in Dock)
-
-Board file: data/board.json
-Secrets:    .env.local  (copy from the other machine or Syncthing)
+Board:   data/board.json
+Secrets: .env.local
 `);
 }
 

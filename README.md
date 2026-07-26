@@ -10,22 +10,31 @@ Core app is a local web UI. Board lives in one JSON file so machines stay in syn
 
 Need **Node 20+** ([nodejs.org](https://nodejs.org)).
 
+For a **native desktop app** (Tauri — own window/icon, not Edge/Chrome):
+- **Windows:** [Rust](https://rustup.rs) + [VS Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) (C++ workload)
+- **Mac:** [Rust](https://rustup.rs) + Xcode CLT (`xcode-select --install`)
+
 ```bash
 git clone https://github.com/Calcifer04/pid.git
 cd pid
-npm run setup          # install + build + Desktop/Dock app
-npm run open           # launch
+npm run setup          # install + build (+ Tauri if Rust is present)
+npm run open           # native app if built, else browser app-mode
 ```
 
-That’s it. After setup:
+Rebuild native only:
+
+```bash
+npm run build:app      # → installer under src-tauri/target/release/bundle/
+```
 
 | OS | Everyday open |
 |----|----------------|
-| **Mac** | `~/Applications/πD.app` → Keep in Dock |
-| **Windows** | Desktop / Start Menu **piD** |
-| **Either** | `npm run open` or double-click `πD.command` / `πD.vbs` |
+| **Mac** | `~/Applications/πD.app` or Tauri `.app` → Keep in Dock |
+| **Windows** | Desktop **piD** (native `pid.exe` when Tauri built) |
+| **Either** | `npm run open` |
 
-First launch starts the local server and opens an app window (no browser tabs). Later opens reuse the same server.
+Native app starts the local API server automatically and opens a real OS window.
+Windows installers (after `build:app`): `src-tauri/target/release/bundle/nsis/piD_*-setup.exe`
 
 ### Board across Mac ↔ Windows
 

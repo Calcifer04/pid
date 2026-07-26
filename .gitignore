@@ -17,6 +17,11 @@ data/*
 
 # Windows launcher binary (built by scripts/install-windows-shortcut.ps1)
 piD.exe
+piD-native.exe
+
+# Tauri / Rust
+src-tauri/target/
+dist-server/
 
 # OS / editor
 .DS_Store
