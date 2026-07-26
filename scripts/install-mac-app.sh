@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Install πD.app into Applications (Dock / Launchpad).
-# Prefers /Applications (what Finder shows); falls back to ~/Applications.
+# Install πD.app into /Applications (Finder) and ~/Applications.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -9,37 +8,64 @@ install_one() {
   local APP_DIR="$1"
   local MACOS_DIR="$APP_DIR/Contents/MacOS"
   local RES_DIR="$APP_DIR/Contents/Resources"
-  local BIN="$MACOS_DIR/πD"
+  local BIN="$MACOS_DIR/piD"
 
   mkdir -p "$MACOS_DIR" "$RES_DIR"
 
+  # Note: executable named piD (ASCII) — Unicode names break some macOS launches
   cat >"$BIN" <<EOF
 #!/bin/bash
+# πD Dock/Finder launcher — must work with GUI PATH
 export PID_PORT="\${PID_PORT:-4000}"
-cd "$ROOT" || exit 1
-if [[ ! -d "$ROOT/node_modules" || ! -f "$ROOT/dist/index.html" ]]; then
-  osascript -e 'display notification "Installing πD…" with title "πD"' 2>/dev/null || true
-  (cd "$ROOT" && npm install && npm run build) || {
-    osascript -e 'display alert "πD setup failed" message "Open Terminal in the project and run: npm run setup"' 2>/dev/null || true
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:\$HOME/.volta/bin:\$HOME/.local/share/fnm/aliases/default/bin:\$PATH"
+export NVM_DIR="\${NVM_DIR:-\$HOME/.nvm}"
+[[ -s "\$NVM_DIR/nvm.sh" ]] && . "\$NVM_DIR/nvm.sh" 2>/dev/null || true
+command -v fnm >/dev/null 2>&1 && eval "\$(fnm env)" 2>/dev/null || true
+
+ROOT="$ROOT"
+LOG="\${TMPDIR:-/tmp}/pid-app.log"
+exec >>"\$LOG" 2>&1
+echo "---- \$(date) ----"
+echo "PATH=\$PATH"
+echo "node=\$(command -v node || echo MISSING)"
+
+cd "\$ROOT" || {
+  osascript -e "display alert \\"πD\\" message \\"Project folder missing:\\n\$ROOT\\n\\nRe-run npm run install:app from the pid folder.\\"" 
+  exit 1
+}
+
+if ! command -v node >/dev/null 2>&1; then
+  osascript -e "display alert \\"πD needs Node.js\\" message \\"Install Node LTS from https://nodejs.org\\n(use the official installer so Dock can find it)\\n\\nThen open πD again.\\""
+  open "https://nodejs.org"
+  exit 1
+fi
+
+# Prefer Tauri native if present
+for N in \\
+  "\$ROOT/src-tauri/target/release/bundle/macos/piD.app/Contents/MacOS/piD" \\
+  "\$ROOT/src-tauri/target/release/pid"
+do
+  if [[ -x "\$N" ]]; then
+    export PID_ROOT="\$ROOT"
+    exec "\$N"
+  fi
+fi
+
+# Ensure built
+if [[ ! -d "\$ROOT/node_modules" || ! -f "\$ROOT/dist/index.html" ]]; then
+  osascript -e 'display notification "Building πD…" with title "πD"' 2>/dev/null || true
+  npm install && npm run build || {
+    osascript -e "display alert \\"πD build failed\\" message \\"See log:\\n\$LOG\\n\\nOr run in Terminal:\\ncd \$ROOT && npm run setup\\""
     exit 1
   }
 fi
-# Prefer native Tauri if built
-NATIVE="$ROOT/src-tauri/target/release/bundle/macos/piD.app/Contents/MacOS/piD"
-if [[ -x "\$NATIVE" ]]; then
-  export PID_ROOT="$ROOT"
-  exec "\$NATIVE"
-fi
-NATIVE2="$ROOT/src-tauri/target/release/pid"
-if [[ -x "\$NATIVE2" ]]; then
-  export PID_ROOT="$ROOT"
-  exec "\$NATIVE2"
-fi
-exec "$ROOT/scripts/launch.sh"
+
+chmod +x "\$ROOT/scripts/launch.sh" 2>/dev/null || true
+exec "\$ROOT/scripts/launch.sh"
 EOF
   chmod +x "$BIN"
 
-  # .icns for Dock
+  # Icon
   local ICNS="$RES_DIR/AppIcon.icns"
   local PNG_SRC=""
   for c in \
@@ -52,15 +78,16 @@ EOF
   done
 
   if [[ -n "$PNG_SRC" ]] && command -v sips >/dev/null 2>&1 && command -v iconutil >/dev/null 2>&1; then
-    local ICONSET
-    ICONSET="$(mktemp -d)/AppIcon.iconset"
+    local ICONSET TMPD
+    TMPD="$(mktemp -d)"
+    ICONSET="$TMPD/AppIcon.iconset"
     mkdir -p "$ICONSET"
     for sz in 16 32 128 256 512; do
       sips -z "$sz" "$sz" "$PNG_SRC" --out "$ICONSET/icon_${sz}x${sz}.png" >/dev/null 2>&1 || true
       sips -z $((sz * 2)) $((sz * 2)) "$PNG_SRC" --out "$ICONSET/icon_${sz}x${sz}@2x.png" >/dev/null 2>&1 || true
     done
     iconutil -c icns "$ICONSET" -o "$ICNS" 2>/dev/null || true
-    rm -rf "$(dirname "$ICONSET")"
+    rm -rf "$TMPD"
   fi
   [[ -n "$PNG_SRC" ]] && cp "$PNG_SRC" "$RES_DIR/icon.png" 2>/dev/null || true
 
@@ -72,7 +99,7 @@ EOF
   <key>CFBundleDevelopmentRegion</key>
   <string>en</string>
   <key>CFBundleExecutable</key>
-  <string>πD</string>
+  <string>piD</string>
   <key>CFBundleIdentifier</key>
   <string>local.pid.board</string>
   <key>CFBundleInfoDictionaryVersion</key>
@@ -86,7 +113,7 @@ EOF
   <key>CFBundleShortVersionString</key>
   <string>0.1.0</string>
   <key>CFBundleVersion</key>
-  <string>3</string>
+  <string>4</string>
   <key>CFBundleIconFile</key>
   <string>AppIcon</string>
   <key>LSMinimumSystemVersion</key>
@@ -97,6 +124,9 @@ EOF
 </plist>
 PLIST
 
+  # PkgInfo helps Launch Services treat it as an app
+  echo -n "APPL????" >"$APP_DIR/Contents/PkgInfo"
+
   xattr -cr "$APP_DIR" 2>/dev/null || true
   local LSREG="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
   [[ -x "$LSREG" ]] && "$LSREG" -f "$APP_DIR" 2>/dev/null || true
@@ -106,36 +136,36 @@ PLIST
 
 chmod +x "$ROOT/scripts/launch.sh" "$ROOT/scripts/"*.sh "$ROOT/πD.command" 2>/dev/null || true
 
-# Explicit override
+# Remove broken old apps with unicode executable name
+rm -rf "/Applications/πD.app" "$HOME/Applications/πD.app" 2>/dev/null || true
+
 if [[ -n "${PID_APP_DIR:-}" ]]; then
   mkdir -p "$(dirname "$PID_APP_DIR")"
   install_one "$PID_APP_DIR"
 else
-  # 1) System Applications (shows in Finder → Applications)
-  if mkdir -p /Applications 2>/dev/null && [[ -w /Applications ]]; then
-    install_one "/Applications/πD.app"
-  else
-    # may need admin once
-    if sudo mkdir -p /Applications 2>/dev/null; then
-      TMP_APP="$(mktemp -d)/πD.app"
-      install_one "$TMP_APP"
-      sudo rm -rf "/Applications/πD.app"
-      sudo mv "$TMP_APP" "/Applications/πD.app"
-      sudo chown -R "$(whoami):staff" "/Applications/πD.app" 2>/dev/null || true
-      echo "installed → /Applications/πD.app (via sudo)"
-    fi
+  if [[ -w /Applications ]] || mkdir -p /Applications 2>/dev/null; then
+    install_one "/Applications/πD.app" 2>/dev/null || {
+      TMP="$(mktemp -d)/πD.app"
+      install_one "$TMP"
+      if command -v osascript >/dev/null 2>&1; then
+        # copy with admin if needed
+        cp -R "$TMP" /Applications/ 2>/dev/null || \
+          osascript -e "do shell script \"rm -rf /Applications/πD.app; cp -R '$TMP' /Applications/πD.app\" with administrator privileges" 2>/dev/null || true
+      fi
+      rm -rf "$(dirname "$TMP")"
+    }
   fi
-
-  # 2) Always also put in ~/Applications
   mkdir -p "$HOME/Applications"
   install_one "$HOME/Applications/πD.app"
 fi
 
 echo ""
-echo "Open now:"
-echo "  open -a πD"
-echo "  # or: open /Applications/πD.app"
-echo "  # or: open \"\$HOME/Applications/πD.app\""
+echo "Open with:"
+echo "  open /Applications/πD.app"
+echo "  # or"
+echo "  open \"\$HOME/Applications/πD.app\""
 echo ""
-echo "If you still don't see it: Finder → Go → Go to Folder… → /Applications"
+echo "If it fails, check log:"
+echo "  cat /tmp/pid-app.log"
+echo "  cat /tmp/pid-launch.log"
 echo "project: $ROOT"
