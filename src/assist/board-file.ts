@@ -7,11 +7,20 @@ import {
   mkdirSync,
   readFileSync,
   renameSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { dirname, isAbsolute, join } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { coerceBoard, seedBoard, type Board } from "../store";
+
+function fileMtimeMs(path: string): number {
+  try {
+    return statSync(path).mtimeMs;
+  } catch {
+    return 0;
+  }
+}
 
 export function boardFilePath(cwd = process.cwd()): string {
   const override = process.env.ROUTINE_DATA?.trim();
@@ -53,14 +62,17 @@ export async function handleBoardRequest(
   }
 
   if (req.method === "GET") {
+    const path = boardFilePath(cwd);
     const fromDisk = readBoardFile(cwd);
     const board = fromDisk ?? seedBoard();
     // First hit with no file: materialize seed so path is real.
     if (!fromDisk) writeBoardFile(board, cwd);
     json(res, 200, {
       board,
-      path: boardFilePath(cwd),
+      path,
       persisted: true,
+      /** Disk mtime — clients use this to pull Syncthing updates. */
+      mtimeMs: fileMtimeMs(path),
     });
     return;
   }
@@ -79,8 +91,13 @@ export async function handleBoardRequest(
       return;
     }
     try {
+      const path = boardFilePath(cwd);
       writeBoardFile(board, cwd);
-      json(res, 200, { ok: true, path: boardFilePath(cwd) });
+      json(res, 200, {
+        ok: true,
+        path,
+        mtimeMs: fileMtimeMs(path),
+      });
     } catch (e) {
       json(res, 500, {
         error: e instanceof Error ? e.message : "write failed",

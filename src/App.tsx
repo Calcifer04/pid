@@ -52,6 +52,8 @@ import {
 import { loadView, saveView } from "./lib/prefs";
 import { buildDaySchedule, type ScheduleEntry } from "./lib/schedule";
 import {
+  boardFingerprint,
+  boardWeight,
   exportFile,
   fetchSharedBoard,
   importFile,
@@ -87,6 +89,10 @@ export default function App() {
   const skipPush = useRef(true);
   const deskBoot = useRef(false);
   const gcalBoot = useRef(false);
+  /** Last board we applied from disk / pushed — avoid ping-pong. */
+  const diskMtimeMs = useRef(0);
+  const lastLocalEditAt = useRef(0);
+  const boardFp = useRef(boardFingerprint(loadLocal()));
 
   const realToday = toDateKey(now);
   const mondayKey = useMemo(() => startOfWeekMonday(dayKey), [dayKey]);
@@ -136,7 +142,7 @@ export default function App() {
     }
   }, [hydrated, board, dayKey, view]);
 
-  // Shared file on disk (via Vite) so Zen / Chrome / wmux all see the same board.
+  // Shared file on disk so Mac/Windows/phone all see the same board (Syncthing).
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -144,27 +150,101 @@ export default function App() {
       const remote = await fetchSharedBoard();
       if (cancelled) return;
       if (remote) {
+        // Prefer disk when it has a real mtime (multi-device source of truth).
+        // Only lift local→disk if local is clearly richer AND disk looks empty-ish.
         const merged = pickRicher(remote.board, local);
-        setBoard(merged);
+        const preferDisk =
+          remote.mtimeMs > 0 &&
+          boardFingerprint(remote.board) !== boardFingerprint(local) &&
+          boardWeight(remote.board) >= boardWeight(local);
+        const next = preferDisk ? remote.board : merged;
+        setBoard(next);
+        boardFp.current = boardFingerprint(next);
+        diskMtimeMs.current = remote.mtimeMs;
         setDataPath(remote.path);
-        saveLocal(merged);
-        // If browser cache was richer (e.g. Infloww only in wmux), lift it to disk.
-        if (pickRicher(merged, remote.board) === merged) {
-          void pushSharedBoard(merged);
+        saveLocal(next);
+        // Lift browser-only richer state to disk once (not when disk already wins).
+        if (!preferDisk && pickRicher(next, remote.board) === next) {
+          const r = await pushSharedBoard(next);
+          if (r.ok && r.mtimeMs) diskMtimeMs.current = r.mtimeMs;
         }
       } else {
-        // Server down — stay on localStorage only.
         setBoard(local);
         setDataPath(null);
       }
       setHydrated(true);
-      // Don't echo the hydrate write as a user edit.
       skipPush.current = true;
     })();
     return () => {
       cancelled = true;
     };
   }, []);
+
+  // Pull disk when Syncthing updates the file, or when you focus this window.
+  // Prevents a stale open PC from overwriting Mac checkoffs.
+  useEffect(() => {
+    if (!hydrated) return;
+
+    let cancelled = false;
+    let timer: number | undefined;
+
+    const pullRemote = async (reason: string) => {
+      // Don't clobber an edit still in the 250ms debounce window.
+      if (Date.now() - lastLocalEditAt.current < 1500) return;
+      const remote = await fetchSharedBoard();
+      if (cancelled || !remote) return;
+
+      // Same or older file — ignore
+      if (
+        remote.mtimeMs &&
+        diskMtimeMs.current &&
+        remote.mtimeMs <= diskMtimeMs.current + 0.5
+      ) {
+        return;
+      }
+
+      const remoteFp = boardFingerprint(remote.board);
+      if (remoteFp === boardFp.current) {
+        diskMtimeMs.current = Math.max(diskMtimeMs.current, remote.mtimeMs);
+        return;
+      }
+
+      // Remote disk changed (other machine / Syncthing) → adopt it
+      skipPush.current = true;
+      boardFp.current = remoteFp;
+      diskMtimeMs.current = remote.mtimeMs || Date.now();
+      setBoard(remote.board);
+      saveLocal(remote.board);
+      setDataPath(remote.path);
+      if (reason === "focus") {
+        setAssistReply((r) => r ?? "board synced from disk");
+        window.setTimeout(() => {
+          setAssistReply((cur) =>
+            cur === "board synced from disk" ? null : cur,
+          );
+        }, 2000);
+      }
+    };
+
+    const onFocus = () => {
+      void pullRemote("focus");
+    };
+    const onVis = () => {
+      if (document.visibilityState === "visible") void pullRemote("focus");
+    };
+
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVis);
+    // Poll — Syncthing often lands while window stays focused
+    timer = window.setInterval(() => void pullRemote("poll"), 2500);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVis);
+      if (timer) window.clearInterval(timer);
+    };
+  }, [hydrated]);
 
   // Drive chrome accent from board.theme (rgb cycle by default).
   useEffect(() => {
@@ -182,15 +262,18 @@ export default function App() {
   useEffect(() => {
     if (!hydrated) return;
     saveLocal(board);
+    const fp = boardFingerprint(board);
     if (skipPush.current) {
       skipPush.current = false;
+      boardFp.current = fp;
       return;
     }
+    // User (or assist) changed the board
+    lastLocalEditAt.current = Date.now();
+    boardFp.current = fp;
     const t = window.setTimeout(() => {
-      void pushSharedBoard(board).then((ok) => {
-        if (!ok) {
-          /* file API optional when offline; local cache still holds */
-        }
+      void pushSharedBoard(board).then((r) => {
+        if (r.ok && r.mtimeMs) diskMtimeMs.current = r.mtimeMs;
       });
       // Auto-push dated items into the chosen Google calendar.
       if (gcal?.connected && gcal.calendarId && gcal.autoSync) {

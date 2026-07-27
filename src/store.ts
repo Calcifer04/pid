@@ -237,10 +237,11 @@ export function pickRicher(a: Board, b: Board): Board {
   return boardWeight(a) >= boardWeight(b) ? a : b;
 }
 
-/** Shared file via Vite /api/board — same data in Zen, Chrome, wmux, etc. */
+/** Shared file via /api/board — same data across machines (Syncthing). */
 export async function fetchSharedBoard(): Promise<{
   board: Board;
   path: string;
+  mtimeMs: number;
 } | null> {
   try {
     const res = await fetch("/api/board", {
@@ -248,26 +249,47 @@ export async function fetchSharedBoard(): Promise<{
       cache: "no-store",
     });
     if (!res.ok) return null;
-    const body = (await res.json()) as { board?: unknown; path?: string };
+    const body = (await res.json()) as {
+      board?: unknown;
+      path?: string;
+      mtimeMs?: number;
+    };
     const board = coerceBoard(body.board);
     if (!board) return null;
-    return { board, path: body.path ?? "data/board.json" };
+    return {
+      board,
+      path: body.path ?? "data/board.json",
+      mtimeMs: typeof body.mtimeMs === "number" ? body.mtimeMs : 0,
+    };
   } catch {
     return null;
   }
 }
 
-export async function pushSharedBoard(board: Board): Promise<boolean> {
+export async function pushSharedBoard(
+  board: Board,
+): Promise<{ ok: boolean; mtimeMs: number }> {
   try {
     const res = await fetch("/api/board", {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ board }),
     });
-    return res.ok;
+    if (!res.ok) return { ok: false, mtimeMs: 0 };
+    const body = (await res.json().catch(() => ({}))) as { mtimeMs?: number };
+    return {
+      ok: true,
+      mtimeMs: typeof body.mtimeMs === "number" ? body.mtimeMs : Date.now(),
+    };
   } catch {
-    return false;
+    return { ok: false, mtimeMs: 0 };
   }
+}
+
+/** Stable fingerprint so we can detect remote disk changes. */
+export function boardFingerprint(board: Board): string {
+  // Order-insensitive enough for our purpose; full JSON is fine (board is small).
+  return JSON.stringify(board);
 }
 
 export function exportFile(board: Board): void {
